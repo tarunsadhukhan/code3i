@@ -343,6 +343,10 @@ $this->load->view('admin/header');
                             <button name="submit" id="updateData" style="height: 50px; display:none;" type="submit" 
                                 class="form-control btn btn-primary">Update Data</button>
                         </div>
+                        <div class="form-group col-md-2" style="margin-left: 20px;">
+                            <label for="importBtn">&nbsp;</label>
+                            <button type="button" class="btn" id="importBtn" style="height: 50px; width: 100%; font-size: 16px; font-weight: bold; background-color: #ff9800; color: white; border: none;">Import</button>
+                        </div>
                     </div>
 
                     <!-- Spinner Overlay -->
@@ -1073,6 +1077,54 @@ $("#updateData").click(function(event) {
         },
         complete: function() {
             $('#spinnerContainer').removeClass('show');
+        }
+    });
+});
+
+// Import Button Handler
+$('#importBtn').on('click', function() {
+    var recepDate = $('#recepdate').val();
+    
+    if (!recepDate) {
+        alert('Please select a receipt date first');
+        return;
+    }
+    
+    $('#spinnerContainer').addClass('show');
+    
+    $.ajax({
+        url: '<?php echo base_url("admin/recepentry/import_jute_receipt"); ?>',
+        type: 'POST',
+        data: { receipt_date: recepDate },
+        dataType: 'json',
+        success: function(response) {
+            $('#spinnerContainer').removeClass('show');
+            if (response.success) {
+                // Populate form with imported data
+                if (response.data) {
+                    var data = response.data;
+                    $('#party_id').val(data.party_id || '').trigger('change');
+                    $('#broker_id').val(data.broker_id || '').trigger('change');
+                    $('#challno').val(data.challno || '');
+                    $('#chaldate').val(data.chaldate || '');
+                    $('#lorryno').val(data.lorryno || '');
+                    $('#agency_id').val(data.agency_id || '').trigger('change');
+                    $('#mrdate').val(data.mrdate || '');
+                    $('#rukkano').val(data.rukkano || '');
+                    $('#rukkadate').val(data.rukkadate || '');
+                    
+                    alert(response.message);
+                    
+                    // Refresh the table with fresh data
+                    searchRecords();
+                }
+            } else {
+                alert(response.message);
+            }
+        },
+        error: function() {
+            $('#spinnerContainer').removeClass('show');
+            alert('Error importing data');
         }
     });
 });

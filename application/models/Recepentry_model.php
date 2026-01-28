@@ -239,4 +239,31 @@ class Recepentry_model extends CI_Model {
         }
         return '00001';
     }
+
+    /**
+     * Get jute receipt data for import by receipt date
+     */
+    public function get_jute_receipt_data($receipt_date) {
+        $sql = "SELECT 
+                    rh.partcode as party_id,
+                    rh.brcode as broker_id,
+                    rh.challno,
+                    rh.chaldate,
+                    rh.lorryno,
+                    rh.agcode as agency_id,
+                    rh.mrdate,
+                    rh.rukkano,
+                    rh.rukkadate
+                FROM EMPMILL12.recpheader rh
+                WHERE rh.inwarddate = ?
+                ORDER BY rh.recpmast_id DESC
+                LIMIT 1";
+        
+        $query = $this->db->query($sql, array($receipt_date));
+        
+        if ($query->num_rows() > 0) {
+            return $query->row_array();
+        }
+        return null;
+    }
 }

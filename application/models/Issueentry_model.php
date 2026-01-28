@@ -139,11 +139,26 @@ class Issueentry_model extends CI_Model {
      */
     public function get_jute_issue_data($issue_date) {
         // Custom query to fetch from jute_issue table
-        $sql = "SELECT jcode_id, godown_id, packcode, bales, weight, stype, jute01, jute02
-                FROM EMPMILL12.jute_issue
-                WHERE issue_date = ?
-                ORDER BY issue_id DESC
-                LIMIT 1";
+        $sql = "INSERT INTO EMPMILL12.issufile
+            (issuedate, godown_id, jcode_id, bales, packcode, weight, fyyear, jute01, jute02, vissno)
+            SELECT
+            ji.issue_date                                         AS issuedate,
+            ji.godown_no                                          AS godown_id,
+            vl.jute01_jcode_id                                    AS jcode_id,
+            ji.quantity                                           AS bales,
+            CASE WHEN ji.bale_loose = 'BALE' THEN 1001 ELSE 1003 END AS packcode,
+            ji.total_weight*100                                       AS weight,
+            ji.fin_year                                           AS fyyear,
+            'Y'                                                   AS jute01,
+            'Y'                                                   AS jute02,
+            ji.issue_no                                           AS vissno
+            FROM jute_issue ji
+            LEFT JOIN EMPMILL12.vowjut01_link vl
+            ON vl.vow_jcode_id = ji.jute_quality
+            WHERE ji.is_active = 1
+            AND ji.company_id = 2
+            AND ji.issue_status NOT IN (4, 6)
+            AND ji.issue_date = ?";
         
         $query = $this->db->query($sql, array($issue_date));
         

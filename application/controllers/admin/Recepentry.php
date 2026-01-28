@@ -517,5 +517,25 @@ class Recepentry extends CI_Controller {
             echo json_encode(['success' => false, 'message' => 'Error updating some line items']);
         }
     }
+
+    public function import_jute_receipt() {
+        $receipt_date = $this->input->post('receipt_date');
+        
+        if (!$receipt_date) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Receipt date is required']);
+            return;
+        }
+
+        $data = $this->Recepentry_model->get_jute_receipt_data($receipt_date);
+        
+        if ($data) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Data imported successfully', 'data' => $data]);
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No data found for the selected date']);
+        }
+    }
 }
 
