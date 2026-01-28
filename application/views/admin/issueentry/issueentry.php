@@ -150,7 +150,7 @@ $this->load->view('admin/header');
                 <div class="col-sm-2">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?php echo base_url().'admin/home'; ?>">Home</a></li>
-                        <li class="breadcrumb-item active">Issue Entry</li>
+                        <li class="breadcrumb-item active">Jute Issue Entry</li>
                     </ol>
                 </div>
             </div>
