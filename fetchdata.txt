@@ -1,0 +1,153 @@
+<!-- HTML code -->
+<input type="text" id="mcno" name="mcno">
+<input type="text" id="rundate" name="rundate">
+<input type="text" id="runshift" name="runshift">
+<input type="text" id="company_id" name="company_id">
+
+<!-- Container to display the results -->
+<div id="resultContainer"></div>
+
+<!-- Include jQuery library -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- AJAX script -->
+<script>
+$(document).ready(function() {
+    $('#mcno').on('change', function() {
+        var mcno = $('#mcno').val();
+        var rundate = $('#rundate').val();
+        var runshift = $('#runshift').val();
+        var company_id = $('#company_id').val();
+
+        $.ajax({
+            url: "<?php echo base_url('controller_name/fetch_data'); ?>",
+            type: "POST",
+            data: {mcno: mcno, rundate: rundate, runshift: runshift, company_id: company_id},
+            dataType: "json",
+            success: function(response) {
+                if (response.success) {
+                    // Process and display the fetched data
+                    var name = response.name;
+                    var weight = response.weight;
+
+                    $('#resultContainer').html('Name: ' + name + '<br>Weight: ' + weight);
+                } else {
+                    $('#resultContainer').text('No data found for the given parameters.');
+                }
+            }
+        });
+    });
+});
+</script>
+
+
+
+
+
+--controller code----
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Controller_name extends CI_Controller {
+
+    public function fetch_data() {
+        $mcno = $this->input->post('mcno');
+        $rundate = $this->input->post('rundate');
+        $runshift = $this->input->post('runshift');
+        $company_id = $this->input->post('company_id');
+
+        // Perform necessary database operations to retrieve data based on the parameters
+        // Replace the following code with your own logic
+
+        // Example queries using CodeIgniter's Active Record
+        $this->db->select('name');
+        $this->db->from('your_table');
+        $this->db->where('mcno', $mcno);
+        $query1 = $this->db->get();
+
+        $this->db->select_sum('weight');
+        $this->db->from('your_table');
+        $this->db->where('mcno', $mcno);
+        $this->db->where('rundate', $rundate);
+        $this->db->where('runshift', $runshift);
+        $this->db->where('company_id', $company_id);
+        $query2 = $this->db->get();
+
+        if ($query1->num_rows() > 0 && $query2->num_rows() > 0) {
+            $row1 = $query1->row();
+            $row2 = $query2->row();
+
+            $response = array(
+                'success' => true,
+                'name' => $row1->name,
+                'weight' => $row2->weight
+            );
+        } else {
+            $response = array(
+                'success' => false
+            );
+        }
+
+        echo json_encode($response);
+    }
+
+}
+
+http://13.126.47.172/
+
+----model code-----
+
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Your_model extends CI_Model {
+
+    public function get_name_by_mcno($mcno) {
+        $this->db->select('name');
+        $this->db->from('your_table');
+        $this->db->where('mcno', $mcno);
+        $query = $this->db->get();
+
+        if ($query->num_rows() > 0) {
+            $row = $query->row();
+            return $row->name;
+        } else {
+            return false;
+        }
+    }
+
+    public function get_weight_by_params($mcno, $rundate, $runshift, $company_id) {
+        $this->db->select_sum('weight');
+        $this->db->from('your_table');
+        $this->db->where('mcno', $mcno);
+        $this->db->where('rundate', $rundate);
+        $this->db->where('runshift', $runshift);
+        $this->db->where('company_id', $company_id);
+        $query = $this->db->get();
+
+        if ($query->num_rows() > 0) {
+            $row = $query->row();
+            return $row->weight;
+        } else {
+            return false;
+        }
+    }
+
+}
+
+
+
+
+--SHOW DATA FROM TABLES
+
+ <?php if(!empty($categories))  { ?>
+
+<?php foreach($categories as $spelllistRow) {   
+  echo "<option value=".$spelllistRow['spell_name'].">".$spelllistRow['spell_name']."</option>";
+
+ } ?>  
+                      
+<?php } else { ?>
+        echo "<option value='' > Select no Spell </option>";
+<?php } ?>
+

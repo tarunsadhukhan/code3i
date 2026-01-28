@@ -1,0 +1,26 @@
+/* Custom mobile-friendly styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 100%;
+    padding: 15px;
+}
+
+.btn {
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Custom DataTable styles for mobile */
+.dataTables_wrapper {
+    overflow-x: auto;
+}
