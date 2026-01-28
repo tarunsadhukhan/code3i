@@ -602,10 +602,8 @@ $('#importBtn').on('click', function() {
         alert('Please select an issue date first');
         return;
     }
-    
-    showSpinner(true);
-    
-    $.ajax({
+        showSpinner(true);
+        $.ajax({
         url: '<?php echo base_url("admin/issueentry/import_jute_issue"); ?>',
         type: 'POST',
         data: { issue_date: issueDate },
