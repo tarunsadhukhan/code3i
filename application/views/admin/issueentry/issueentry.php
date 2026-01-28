@@ -145,7 +145,7 @@ $this->load->view('admin/header');
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-10">
-                    <h3 class="m-1 text-dark text-center" style="background-color: #1589FF;">Issue Entry</h3>
+                    <h3 class="m-1 text-dark text-center" style="background-color: #1589FF;">Jute Issue Entry</h3>
                 </div>
                 <div class="col-sm-2">
                     <ol class="breadcrumb float-sm-right">
