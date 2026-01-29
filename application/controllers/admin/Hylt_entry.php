@@ -78,7 +78,9 @@ class Hylt_entry extends CI_Controller {
                 $record->cor_wt,
                 $record->mlen,
                 $record->unit,
-                $record->diff_wt
+                $record->diff_wt,
+                $record->hylt_obj,
+                $record->hylt_cor
             ];
         }
         
@@ -127,7 +129,7 @@ class Hylt_entry extends CI_Controller {
             'obj_wt' => $obj_wt,
             'cor_wt' => $cor_wt,
             'diff_wt' => $diff_wt,
-            'user_code' => $user_code,
+            'user_id' => $user_code,
             'ent_date_time' => date('Y-m-d H:i:s')
         );
         
@@ -193,7 +195,7 @@ class Hylt_entry extends CI_Controller {
             'obj_wt' => $obj_wt,
             'cor_wt' => $cor_wt,
             'diff_wt' => $diff_wt,
-            'user_code' => $user_code
+            'user_id' => $user_code
         );
         
         $result = $this->Hylt_model->update_transaction($record_id, $data);

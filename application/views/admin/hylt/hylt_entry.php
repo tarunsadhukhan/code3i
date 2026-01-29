@@ -324,6 +324,8 @@ $this->load->view('admin/header');
                             <th>Length</th>
                             <th>Unit</th>
                             <th>Diff Wt</th>
+                            <th>Obj %</th>
+                            <th>Cor %</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -552,6 +554,8 @@ $('#hyltrecordTable tbody').on('click', 'tr', function() {
     $('#mlen').val(rowData[13]);
     $('#unit').val(rowData[14]);
     $('#diff_wt').val(rowData[15]);
+    $('#hylt_obj').val(rowData[16]);
+    $('#hylt_cor').val(rowData[17]);
     
     // Trigger qcode lookup to get quality name
     $('#qcode').trigger('input');

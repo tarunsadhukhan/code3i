@@ -53,6 +53,7 @@ $this->load->view('admin/header');
     }
 
     /* Spinner styles */
+
     .spinner-container {
         display: none;
         position: fixed;
@@ -77,7 +78,7 @@ $this->load->view('admin/header');
         gap: 15px;
         padding: 40px 50px;
         background: rgba(255, 255, 255, 0.95);
-        border-radius: 12px;
+        border-radius: 16px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         font-family: system-ui, sans-serif;
     }
@@ -131,6 +132,7 @@ $this->load->view('admin/header');
         font-size: 16px;
         letter-spacing: 1px;
     }
+
 </style>
 
 <!-- Content Wrapper -->

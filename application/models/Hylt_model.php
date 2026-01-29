@@ -30,7 +30,8 @@ class Hylt_model extends CI_Model {
         $this->db->select("ht.hylttran_id, ht.tran_date, ht.qcode, ht.orders, ht.bales, 
                           ht.av_mr, ht.av_std, ht.av_obj, ht.av_cor, ht.std_wt, 
                           ht.obj_wt, ht.cor_wt, ht.mlen, ht.unit, ht.diff_wt,
-                          CONCAT(IFNULL(hm.width,''), '\"- ', IFNULL(hm.ports,''), 'x', IFNULL(hm.shots,''), ' - ', IFNULL(hm.ozsyds,'')) AS quality_display");
+                          CONCAT(IFNULL(hm.width,''), '\"- ', IFNULL(hm.ports,''), 'x', IFNULL(hm.shots,''), ' - ', IFNULL(hm.ozsyds,'')) AS quality_display,
+                          hylt_obj, hylt_cor");
         $this->db->from('EMPMILL12.hylttran ht');
         $this->db->join('EMPMILL12.hyltmast hm', 'ht.qcode = hm.qcode', 'left');
         $this->db->where('ht.tran_date', $date);
