@@ -57,7 +57,8 @@ class Recepentry_model extends CI_Model {
         $this->db->where('rf.recpmast_id', $recpmast_id);
         $this->db->order_by('rf.slno', 'ASC');
         $itemsQuery = $this->db->get();
-        
+
+        //echo $this->db->last_query(); exit;
         $items = $itemsQuery->result_array();
         
         return [
@@ -244,6 +245,33 @@ class Recepentry_model extends CI_Model {
      * Get jute receipt data for import by receipt date
      */
     public function get_jute_receipt_data($receipt_date) {
+        $sql="insert into EMPMILL12.recpheader (recpno,inwarddate,partcode,challno,chaldate,lorryno,
+            agcode,mrdate,jcino,tr_type,user_id
+            )
+            select smh.jute_receive_no,smh.jute_receive_dt ,s.supp_id,smh.challan_no,smh.challan_date,smh.vehicle_no ,
+            smh.mukam_id , smh.jute_receive_dt ,
+            case when supp_id in(1693,1093) then 'Y' else 'N' end jcino,'P' tr_type,26586 user_id
+            from scm_mr_hdr smh
+            left join suppliermaster s on s.supp_code =smh.actual_supplier and s.company_id =s.company_id 
+            where smh.jute_receive_dt =? and smh.mr_good_recept_status not in (4,6) and smh.company_id=2
+            ";
+            $this->db->query($sql,array($receipt_date));
+            
+            $sql="	insert into EMPMILL12.recpfile (recpmast_id,godown_id,jcode_id,
+            recpbales,packcode,netweight,jute01,jute02)
+           select rh.recpmast_id,smli.warehouse_no ,vl.jute01_jcode_id  ,
+            case when smli.actual_bale>0 then smli.actual_bale else smli.actual_loose end bales,
+case when smli.actual_bale>0 then 3 else 5 end packcode,smli.actual_weight,'Y' j01,'Y' j02
+from scm_mr_line_item smli 
+left join scm_mr_hdr smh on smh.jute_receive_no =smli.jute_receive_no 
+left join EMPMILL12.recpheader rh on rh.recpno =smh.jute_receive_no
+left join EMPMILL12.vowjut01_link vl on vl.vow_jcode_id =smli.actual_quality  
+where smh.jute_receive_dt =? and smh.mr_good_recept_status not in (4,6) and smh.company_id=2
+and smli.is_active =1";
+            $this->db->query($sql,array($receipt_date));
+
+
+            
         $sql = "SELECT 
                     rh.partcode as party_id,
                     rh.brcode as broker_id,
@@ -258,12 +286,43 @@ class Recepentry_model extends CI_Model {
                 WHERE rh.inwarddate = ?
                 ORDER BY rh.recpmast_id DESC
                 LIMIT 1";
-        
+            
         $query = $this->db->query($sql, array($receipt_date));
         
         if ($query->num_rows() > 0) {
             return $query->row_array();
         }
         return null;
+    }
+
+    /**
+     * Check if receipt data already exists for a given date
+     */
+    public function check_receipt_exists($receipt_date) {
+        $this->db->from('EMPMILL12.recpheader');
+        $this->db->where('inwarddate', $receipt_date);
+        $count = $this->db->count_all_results();
+        return $count > 0;
+    }
+
+    /**
+     * Delete receipt records for a given date
+     */
+    public function delete_receipt_by_date($receipt_date) {
+        // First get all receipt IDs for the date
+        $sql = "SELECT recpmast_id FROM EMPMILL12.recpheader WHERE inwarddate = ?";
+        $query = $this->db->query($sql, array($receipt_date));
+        
+        if ($query->num_rows() > 0) {
+            $results = $query->result_array();
+            
+            // Delete line items first (foreign key constraint)
+            foreach ($results as $row) {
+                $this->db->delete('EMPMILL12.recpfile', ['recpmast_id' => $row['recpmast_id']]);
+            }
+            
+            // Then delete header records
+            $this->db->delete('EMPMILL12.recpheader', ['inwarddate' => $receipt_date]);
+        }
     }
 }

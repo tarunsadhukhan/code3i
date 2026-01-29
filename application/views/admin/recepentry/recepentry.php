@@ -17,6 +17,7 @@ $this->load->view('admin/header');
         border: 1px solid #ddd;
         padding: 8px;
         text-align: center;
+        white-space: nowrap;
     }
 
     #receprecordTable th {
@@ -347,6 +348,10 @@ $this->load->view('admin/header');
                             <label for="importBtn">&nbsp;</label>
                             <button type="button" class="btn" id="importBtn" style="height: 50px; width: 100%; font-size: 16px; font-weight: bold; background-color: #ff9800; color: white; border: none;">Import</button>
                         </div>
+                        <div class="form-group col-md-2" style="margin-left: 20px;">
+                            <label for="clearFormBtn">&nbsp;</label>
+                            <button type="button" class="btn btn-secondary" id="clearFormBtn" style="height: 50px; width: 100%; font-size: 16px; font-weight: bold;">Clear Form</button>
+                        </div>
                     </div>
 
                     <!-- Spinner Overlay -->
@@ -380,6 +385,7 @@ $this->load->view('admin/header');
                             <th>Weight</th>
                             <th>Claim Qty</th>
                             <th>Claim Moist</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -622,37 +628,105 @@ initDataTable();
 
 function initDataTable() {
     table = $('#receprecordTable').DataTable({
-        ajax: {
-            url: '<?php echo base_url('admin/Recepentry/get_records'); ?>',
-            type: 'POST',
-            data: function(d) {
-                d.date = $('#inwarddate').val();
-            }
-        },
+        pageLength: 10,
+        order: [[0, 'desc']],
         columnDefs: [
             { targets: [0], visible: false }
-        ],
-        order: [[0, 'desc']],
-        pageLength: 10
+        ]
     });
 }
 
 function refreshDataTable() {
-    if ($.fn.DataTable.isDataTable('#receprecordTable')) {
-        $('#spinnerContainer').addClass('show');
-        $('#receprecordTable').DataTable().ajax.reload(function() {
+    $('#spinnerContainer').addClass('show');
+    
+    $.ajax({
+        url: '<?php echo base_url('admin/Recepentry/get_records'); ?>',
+        type: 'POST',
+        data: { date: $('#inwarddate').val() },
+        dataType: 'json',
+        success: function(response) {
             $('#spinnerContainer').removeClass('show');
-        });
-    }
+            
+            table.clear();
+            
+            $.each(response.data, function(index, record) {
+                table.row.add([
+                    record[0],  // recpmast_id (hidden)
+                    record[1],  // recpno
+                    record[2],  // inwarddate
+                    record[3],  // party
+                    record[4],  // challno
+                    record[5],  // lorryno
+                    record[6],  // agency
+                    record[7],  // quality
+                    record[8],  // godownno
+                    record[9],  // recpbales
+                    record[10], // netweight
+                    record[11], // claimqt
+                    record[12], // claimmoist
+                    '<button class="btn btn-info btn-sm view-receipt" data-id="' + record[0] + '" data-recpno="' + record[1] + '" data-inwarddate="' + record[2] + '" data-party="' + record[3] + '" data-challno="' + (record[4] || '') + '" data-lorryno="' + (record[5] || '') + '" data-agency="' + record[6] + '" data-quality="' + record[7] + '" data-godownno="' + record[8] + '" data-recpbales="' + record[9] + '" data-netweight="' + record[10] + '" data-claimqt="' + (record[11] || '') + '" data-claimmoist="' + (record[12] || '') + '">Edit</button> ' +
+                    '<button class="btn btn-danger btn-sm delete-receipt" data-id="' + record[0] + '">Delete</button>'
+                ]);
+            });
+            
+            table.draw();
+        },
+        error: function() {
+            $('#spinnerContainer').removeClass('show');
+        }
+    });
 }
 
-// Row click handler
-$('#receprecordTable tbody').on('click', 'tr', function() {
-    var rowData = table.row(this).data();
-    var recpmast_id = rowData[0];
+// Edit button click handler
+$(document).on('click', '.view-receipt', function() {
+    var recpmast_id = $(this).data('id');
+    loadReceiptForEdit(recpmast_id, $(this));
+    
+    $('html, body').animate({
+        scrollTop: $('#recepForm').offset().top - 100
+    }, 500);
+});
+
+// Delete button click handler
+$(document).on('click', '.delete-receipt', function() {
+    if (confirm('Are you sure you want to delete this receipt?')) {
+        var recpmast_id = $(this).data('id');
+        $('#spinnerContainer').addClass('show');
+        
+        $.ajax({
+            url: '<?php echo base_url("admin/Recepentry/delete_receipt"); ?>',
+            type: 'POST',
+            data: { recpmast_id: recpmast_id },
+            dataType: 'json',
+            success: function(response) {
+                $('#spinnerContainer').removeClass('show');
+                if (response.success) {
+                    alert(response.message);
+                    refreshDataTable();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                $('#spinnerContainer').removeClass('show');
+            }
+        });
+    }
+});
+
+// Function to load receipt data for editing
+function loadReceiptForEdit(recpmast_id, buttonElement) {
     $('#recpmast_id').val(recpmast_id);
     
-    // Fetch complete receipt data
+    // Get data from button attributes
+    $('#recpno').val(buttonElement.data('recpno'));
+    $('#inwarddate').val(formatDateForInput(buttonElement.data('inwarddate')));
+    $('#challno').val(buttonElement.data('challno') || '');
+    $('#lorryno').val(buttonElement.data('lorryno') || '');
+    $('#claimqt').val(buttonElement.data('claimqt') || '');
+    $('#claimmoist').val(buttonElement.data('claimmoist') || '');
+    
+    // Fetch complete receipt data for additional fields and line items
     $.ajax({
         url: "<?php echo base_url('admin/Recepentry/get_receipt_data'); ?>",
         type: "POST",
@@ -663,16 +737,11 @@ $('#receprecordTable tbody').on('click', 'tr', function() {
                 var header = response.data.header;
                 var items = response.data.items;
                 
-                // Populate header fields
-                $('#recpmast_id').val(header.recpmast_id);
-                $('#recpno').val(header.recpno);
+                // Populate remaining header fields
                 $('#fyyear').val(header.fyyear);
-                $('#inwarddate').val(formatDateForInput(header.inwarddate));
                 $('#lotno').val(header.lotno || '');
                 $('#jcino').val(header.jcino || '');
-                $('#challno').val(header.challno || '');
                 $('#chaldate').val(formatDateForInput(header.chaldate));
-                $('#lorryno').val(header.lorryno || '');
                 $('#mrdate').val(formatDateForInput(header.mrdate));
                 $('#rukkano').val(header.rukkano || '');
                 $('#rukkadate').val(formatDateForInput(header.rukkadate));
@@ -718,17 +787,9 @@ $('#receprecordTable tbody').on('click', 'tr', function() {
             alert('Error loading receipt data: ' + error);
         }
     });
-});
+}
 
-// Row selection
-$('#receprecordTable tbody').on('click', 'tr', function() {
-    if ($(this).hasClass('selected')) {
-        $(this).removeClass('selected');
-    } else {
-        table.$('tr.selected').removeClass('selected');
-        $(this).addClass('selected');
-    }
-});
+
 
 // Store line items in array
 var lineItems = [];
@@ -946,6 +1007,14 @@ function clearForm() {
     $("#saveData").attr('disabled', true);
 }
 
+// Clear Form button handler
+$("#clearFormBtn").click(function(event) {
+    event.preventDefault();
+    if (confirm('Are you sure you want to clear the form? All unsaved data will be lost.')) {
+        clearForm();
+    }
+});
+
 // Save button handler
 $("#saveData").click(function(event) {
     event.preventDefault();
@@ -1083,22 +1152,58 @@ $("#updateData").click(function(event) {
 
 // Import Button Handler
 $('#importBtn').on('click', function() {
-    var recepDate = $('#recepdate').val();
+    var recepDate = $('#inwarddate').val();
     
+                    date = $('#inwarddate').val();
+alert('Receipt Date: ' + recepDate);
+alert('Date Value: ' + date);
     if (!recepDate) {
         alert('Please select a receipt date first');
         return;
     }
     
+    // First check if data already exists for this date
+    $.ajax({
+        url: '<?php echo base_url("admin/recepentry/check_existing_import"); ?>',
+        type: 'POST',
+        data: { receipt_date: recepDate },
+        dataType: 'json',
+        success: function(response) {
+            console.log('Check existing response:', response);
+            console.log('Exists:', response.exists);
+            
+            if (response.exists === true || response.exists === 1) {
+                // Data already exists, show confirmation
+                var confirmMsg = 'Data already imported for this date.\n\nClick "OK" to delete previous records and import again.\nClick "Cancel" to go back.';
+                if (confirm(confirmMsg)) {
+                    // User clicked Yes - proceed with import
+                    performImport(recepDate, true);
+                }
+                // If user clicked Cancel/No, just return - don't do anything
+            } else {
+                // No existing data, proceed with import
+                performImport(recepDate, false);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log('Check error:', error);
+            console.log('Response:', xhr.responseText);
+            alert('Error checking existing data: ' + error);
+        }
+    });
+});
+
+function performImport(recepDate, deleteExisting) {
     $('#spinnerContainer').addClass('show');
     
     $.ajax({
         url: '<?php echo base_url("admin/recepentry/import_jute_receipt"); ?>',
         type: 'POST',
-        data: { receipt_date: recepDate },
+        data: { receipt_date: recepDate, delete_existing: deleteExisting },
         dataType: 'json',
         success: function(response) {
             $('#spinnerContainer').removeClass('show');
+            console.log('Response:', response);
             if (response.success) {
                 // Populate form with imported data
                 if (response.data) {
@@ -1117,17 +1222,22 @@ $('#importBtn').on('click', function() {
                     
                     // Refresh the table with fresh data
                     searchRecords();
+                } else {
+                    alert('Data imported but no details returned');
                 }
             } else {
                 alert(response.message);
             }
         },
-        error: function() {
+        error: function(xhr, status, error) {
             $('#spinnerContainer').removeClass('show');
-            alert('Error importing data');
+            console.log('Error Status:', status);
+            console.log('Error:', error);
+            console.log('Response Text:', xhr.responseText);
+            alert('Error importing data: ' + error);
         }
     });
-});
+}
 </script>
 
 </body>

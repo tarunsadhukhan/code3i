@@ -602,14 +602,49 @@ $('#importBtn').on('click', function() {
         alert('Please select an issue date first');
         return;
     }
-        showSpinner(true);
-        $.ajax({
-        url: '<?php echo base_url("admin/issueentry/import_jute_issue"); ?>',
+    
+    // First check if data already exists for this date
+    $.ajax({
+        url: '<?php echo base_url("admin/issueentry/check_existing_import"); ?>',
         type: 'POST',
         data: { issue_date: issueDate },
         dataType: 'json',
         success: function(response) {
+            console.log('Check existing response:', response);
+            console.log('Exists:', response.exists);
+            
+            if (response.exists === true || response.exists === 1) {
+                // Data already exists, show confirmation
+                var confirmMsg = 'Data already imported for this date.\n\nClick "OK" to delete previous records and import again.\nClick "Cancel" to go back.';
+                if (confirm(confirmMsg)) {
+                    // User clicked Yes - proceed with import
+                    performIssueImport(issueDate, true);
+                }
+                // If user clicked Cancel/No, just return - don't do anything
+            } else {
+                // No existing data, proceed with import
+                performIssueImport(issueDate, false);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log('Check error:', error);
+            console.log('Response:', xhr.responseText);
+            alert('Error checking existing data: ' + error);
+        }
+    });
+});
+
+function performIssueImport(issueDate, deleteExisting) {
+    showSpinner(true);
+    
+    $.ajax({
+        url: '<?php echo base_url("admin/issueentry/import_jute_issue"); ?>',
+        type: 'POST',
+        data: { issue_date: issueDate, delete_existing: deleteExisting },
+        dataType: 'json',
+        success: function(response) {
             showSpinner(false);
+            console.log('Response:', response);
             if (response.success) {
                 // Populate form with imported data
                 if (response.data) {
@@ -632,17 +667,22 @@ $('#importBtn').on('click', function() {
                     
                     // Refresh the table with fresh data
                     searchRecords();
+                } else {
+                    alert('Data imported but no details returned');
                 }
             } else {
                 alert(response.message);
             }
         },
-        error: function() {
+        error: function(xhr, status, error) {
             showSpinner(false);
-            alert('Error importing data');
+            console.log('Error Status:', status);
+            console.log('Error:', error);
+            console.log('Response Text:', xhr.responseText);
+            alert('Error importing data: ' + error);
         }
     });
-});
+}
 
 </script>
 

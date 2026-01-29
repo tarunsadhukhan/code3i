@@ -7,6 +7,13 @@ class Recepentry extends CI_Controller {
         parent::__construct();
         $this->load->model('Recepentry_model');
         $this->load->library('form_validation');
+        
+        // Check if company_id is valid, otherwise logout
+        $company_id = $this->session->userdata('company_id');
+        if (empty($company_id) || $company_id == 0 || $company_id == '0') {
+            $this->session->sess_destroy();
+            redirect('admin/login');
+        }
     }
 
     public function index() {
@@ -21,7 +28,7 @@ class Recepentry extends CI_Controller {
         $parties = $this->db->select('supp_id as party_id, supp_name as party')
             ->from('suppliermaster')
             ->where('company_id', $company_id)
-            ->where('supp_type', 'J')
+            ->where_in('supp_type', ['J', 'O'])
             ->order_by('supp_name', 'ASC')
             ->get()
             ->result();
@@ -40,7 +47,7 @@ class Recepentry extends CI_Controller {
             ->from('suppliermaster')
             ->where('supp_id', $party_id)
             ->where('company_id', $company_id)
-            ->where('supp_type', 'J')
+            ->where_in('supp_type', ['J', 'O'])
             ->get()
             ->row();
         
@@ -161,7 +168,7 @@ class Recepentry extends CI_Controller {
         $brokers = $this->db->select('supp_id as broker_id, supp_name as broker_name')
             ->from('suppliermaster')
             ->where('company_id', $company_id)
-            ->where('supp_type', 'J')
+            ->where_in('supp_type', ['J', 'O'])
             ->order_by('supp_name', 'ASC')
             ->get()
             ->result();
@@ -180,7 +187,7 @@ class Recepentry extends CI_Controller {
             ->from('suppliermaster')
             ->where('supp_id', $broker_id)
             ->where('company_id', $company_id)
-            ->where('supp_type', 'J')
+            ->where_in('supp_type', ['J', 'O'])
             ->get()
             ->row();
         
@@ -220,7 +227,9 @@ class Recepentry extends CI_Controller {
         
         $godowns = $this->db->select('id, name, address, type')
             ->from('warehouse_details')
-            ->where('company_id', $company_id)
+                ->where('company_id', $company_id)
+                ->where('type', 'J')
+                
             ->order_by('name', 'ASC')
             ->get()
             ->result();
@@ -518,13 +527,38 @@ class Recepentry extends CI_Controller {
         }
     }
 
+    public function check_existing_import() {
+        header('Content-Type: application/json');
+        
+        $receipt_date = $this->input->post('receipt_date');
+        
+                $receipt_date = substr($receipt_date, 6, 4) . '-' . substr($receipt_date, 3, 2) . '-' . substr($receipt_date, 0, 2);
+
+
+        if (!$receipt_date) {
+            echo json_encode(['exists' => false, 'message' => 'Receipt date is required']);
+            return;
+        }
+
+        $exists = $this->Recepentry_model->check_receipt_exists($receipt_date);
+        
+        echo json_encode(['exists' => (bool)$exists, 'message' => $exists ? 'Data exists' : 'No data']);
+    }
+
     public function import_jute_receipt() {
         $receipt_date = $this->input->post('receipt_date');
+        $delete_existing = $this->input->post('delete_existing');
+            $receipt_date = substr($receipt_date, 6, 4) . '-' . substr($receipt_date, 3, 2) . '-' . substr($receipt_date, 0, 2);
         
         if (!$receipt_date) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Receipt date is required']);
             return;
+        }
+
+        // Delete existing records if requested
+        if ($delete_existing) {
+            $this->Recepentry_model->delete_receipt_by_date($receipt_date);
         }
 
         $data = $this->Recepentry_model->get_jute_receipt_data($receipt_date);
@@ -537,5 +571,30 @@ class Recepentry extends CI_Controller {
             echo json_encode(['success' => false, 'message' => 'No data found for the selected date']);
         }
     }
-}
 
+    /**
+     * Delete receipt by ID
+     */
+    public function delete_receipt() {
+        $recpmast_id = $this->input->post('recpmast_id');
+        
+        if (!$recpmast_id) {
+            echo json_encode(['success' => false, 'message' => 'Receipt ID is required']);
+            return;
+        }
+
+        // Delete line items first
+        $this->db->where('recpmast_id', $recpmast_id);
+        $items_deleted = $this->db->delete('EMPMILL12.recpfile');
+
+        // Delete header
+        $this->db->where('recpmast_id', $recpmast_id);
+        $header_deleted = $this->db->delete('EMPMILL12.recpheader');
+
+        if ($header_deleted) {
+            echo json_encode(['success' => true, 'message' => 'Receipt deleted successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Error deleting receipt']);
+        }
+    }
+}

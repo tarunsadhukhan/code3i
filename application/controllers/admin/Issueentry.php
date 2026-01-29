@@ -6,6 +6,13 @@ class Issueentry extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('Issueentry_model');
+        
+        // Check if company_id is valid, otherwise logout
+        $company_id = $this->session->userdata('company_id');
+        if (empty($company_id) || $company_id == 0 || $company_id == '0') {
+            $this->session->sess_destroy();
+            redirect('admin/login');
+        }
     }
 
     public function index() {
@@ -160,13 +167,34 @@ class Issueentry extends CI_Controller {
     /**
      * Import data from jute_issue table based on issue date
      */
+    public function check_existing_import() {
+        header('Content-Type: application/json');
+        
+        $issue_date = $this->input->post('issue_date');
+        
+        if (!$issue_date) {
+            echo json_encode(['exists' => false, 'message' => 'Issue date is required']);
+            return;
+        }
+
+        $exists = $this->Issueentry_model->check_issue_exists($issue_date);
+        
+        echo json_encode(['exists' => (bool)$exists, 'message' => $exists ? 'Data exists' : 'No data']);
+    }
+
     public function import_jute_issue() {
         $issue_date = $this->input->post('issue_date');
+        $delete_existing = $this->input->post('delete_existing');
         
         if (!$issue_date) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Issue date is required']);
             return;
+        }
+
+        // Delete existing records if requested
+        if ($delete_existing) {
+            $this->Issueentry_model->delete_issue_by_date($issue_date);
         }
 
         $data = $this->Issueentry_model->get_jute_issue_data($issue_date);

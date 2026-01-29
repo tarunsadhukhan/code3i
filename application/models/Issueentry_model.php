@@ -25,6 +25,8 @@ class Issueentry_model extends CI_Model {
     public function get_godown_list() {
         $this->db->select('id, name');
         $this->db->from('warehouse_details');
+        $this->db->where('type', 'J');
+        $this->db->where('company_id', $this->session->userdata('company_id'));
         $this->db->order_by('name', 'ASC');
         $query = $this->db->get();
         return $query->result();
@@ -45,7 +47,7 @@ class Issueentry_model extends CI_Model {
      * Get all issue records for a specific date
      */
     public function get_issues_by_date($date) {
-        $this->db->select('i.issue_id, i.issueno, i.issuedate, i.fyyear, i.jcode_id, i.godown_id, i.packcode,
+        $this->db->select('i.issue_id,  i.issuedate, i.fyyear, i.jcode_id, i.godown_id, i.packcode,
                           jm.quality, jm.jcode, wd.name as godownno, i.bales, i.weight, 
                           pm.packing, i.stype, i.rate, i.jute01, i.jute02');
         $this->db->from('EMPMILL12.issufile i');
@@ -138,15 +140,15 @@ class Issueentry_model extends CI_Model {
      * Get jute issue data from jute_issue table based on date
      */
     public function get_jute_issue_data($issue_date) {
-        // Custom query to fetch from jute_issue table
-        $sql = "INSERT INTO EMPMILL12.issufile
+        // First, perform the INSERT operation
+        $insert_sql = "INSERT INTO EMPMILL12.issufile
             (issuedate, godown_id, jcode_id, bales, packcode, weight, fyyear, jute01, jute02, vissno)
             SELECT
             ji.issue_date                                         AS issuedate,
             ji.godown_no                                          AS godown_id,
             vl.jute01_jcode_id                                    AS jcode_id,
             ji.quantity                                           AS bales,
-            CASE WHEN ji.bale_loose = 'BALE' THEN 1001 ELSE 1003 END AS packcode,
+            CASE WHEN ji.bale_loose = 'BALE' THEN 3 ELSE 5 END AS packcode,
             ji.total_weight*100                                       AS weight,
             ji.fin_year                                           AS fyyear,
             'Y'                                                   AS jute01,
@@ -160,12 +162,34 @@ class Issueentry_model extends CI_Model {
             AND ji.issue_status NOT IN (4, 6)
             AND ji.issue_date = ?";
         
-        $query = $this->db->query($sql, array($issue_date));
+        // Execute insert
+        $this->db->query($insert_sql, array($issue_date));
+        
+        // Now fetch and return the inserted data
+        $select_sql = "SELECT * FROM EMPMILL12.issufile WHERE issuedate = ? ORDER BY issue_id DESC LIMIT 1";
+        $query = $this->db->query($select_sql, array($issue_date));
         
         if ($query->num_rows() > 0) {
             return $query->row_array();
         }
         return null;
+    }
+
+    /**
+     * Check if issue data already exists for a given date
+     */
+    public function check_issue_exists($issue_date) {
+        $this->db->from('EMPMILL12.issufile');
+        $this->db->where('issuedate', $issue_date);
+        $count = $this->db->count_all_results();
+        return $count > 0;
+    }
+
+    /**
+     * Delete issue records for a given date
+     */
+    public function delete_issue_by_date($issue_date) {
+        $this->db->delete('EMPMILL12.issufile', ['issuedate' => $issue_date]);
     }
 }
 
