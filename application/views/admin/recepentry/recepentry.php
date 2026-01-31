@@ -6,6 +6,9 @@ $this->load->view('admin/header');
 <link rel="stylesheet" href="<?php echo base_url('public/admin/plugins/select2/css/select2.min.css'); ?>">
 <link rel="stylesheet" href="<?php echo base_url('public/admin/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css'); ?>">
 
+ 
+
+
 <style>
     #receprecordTable {
         border-collapse: collapse;
@@ -50,6 +53,22 @@ $this->load->view('admin/header');
     
     .select2-selection__arrow {
         height: 40px !important;
+    }
+
+    /* Input Focus Styling */
+    input.form-control:focus,
+    textarea.form-control:focus {
+        background-color: #fffacd !important;
+        border-color: #1589FF !important;
+        box-shadow: 0 0 5px rgba(21, 137, 255, 0.5) !important;
+        outline: none !important;
+    }
+
+    /* Select2 Focus Styling */
+    .select2-container--bootstrap4.select2-container--focus .select2-selection {
+        background-color: #fffacd !important;
+        border-color: #1589FF !important;
+        box-shadow: 0 0 5px rgba(21, 137, 255, 0.5) !important;
     }
 
     /* Spinner styles */
@@ -941,7 +960,12 @@ $(document).on('click', '.editLineItem', function() {
     
     // Populate form fields with line item data
     $('#jcodeid').val(lineItem.jcodeid).trigger('change');
-    $('#godown').val(lineItem.godown).trigger('change');
+    
+    // Set godown with a small delay to ensure Select2 is ready
+    setTimeout(function() {
+        $('#godown').val(lineItem.godown).trigger('change');
+    }, 100);
+    
     $('#bales').val(lineItem.bales);
     $('#unit').val(lineItem.unit).trigger('change');
     $('#weight').val(lineItem.weight);
@@ -1157,8 +1181,8 @@ $('#importBtn').on('click', function() {
     var recepDate = $('#inwarddate').val();
     
                     date = $('#inwarddate').val();
-alert('Receipt Date: ' + recepDate);
-alert('Date Value: ' + date);
+//alert('Receipt Date: ' + recepDate);
+//alert('Date Value: ' + date);
     if (!recepDate) {
         alert('Please select a receipt date first');
         return;
@@ -1223,7 +1247,7 @@ function performImport(recepDate, deleteExisting) {
                     alert(response.message);
                     
                     // Refresh the table with fresh data
-                    searchRecords();
+                    refreshDataTable();
                 } else {
                     alert('Data imported but no details returned');
                 }

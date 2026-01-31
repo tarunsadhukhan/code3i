@@ -626,7 +626,7 @@ $("#saveData").click(function(event) {
         cor_wt: $('#cor_wt').val(),
         diff_wt: $('#diff_wt').val()
     };
-    
+    alert(JSON.stringify(formData));    
     // Show spinner
     $('#spinnerContainer').addClass('show');
     $("#saveData").prop('disabled', true);

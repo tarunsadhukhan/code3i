@@ -789,6 +789,33 @@ scratch. This page gets rid of all links and provides the needed markup only.
               </p>
             </a>
           </li>
+          <li class="nav-item">
+            <a href="<?php echo base_url().'admin/misc_prod_entry'; ?>" class="nav-link">
+              <i class="nav-icon fas fa-clipboard-list"></i>
+              <p>
+                Misc Prod Entry
+                <span class="right badge badge-danger">New</span>
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="<?php echo base_url().'admin/spreader_lapping_entry'; ?>" class="nav-link">
+              <i class="nav-icon fas fa-layer-group"></i>
+              <p>
+                Spreader Lapping Entry
+                <span class="right badge badge-danger">New</span>
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="<?php echo base_url().'admin/break_down_entry'; ?>" class="nav-link">
+              <i class="nav-icon fas fa-tools"></i>
+              <p>
+                Break Down Entries
+                <span class="right badge badge-danger">New</span>
+              </p>
+            </a>
+          </li>
 
         
 

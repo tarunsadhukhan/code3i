@@ -45,6 +45,7 @@ class Hylt_model extends CI_Model {
      * Insert new hylt transaction record
      */
     public function insert_transaction($data) {
+  //      echo json_encode($data);  // Debugging line to inspect data being inserted
         $this->db->insert('EMPMILL12.hylttran', $data);
         return $this->db->insert_id();
     }
