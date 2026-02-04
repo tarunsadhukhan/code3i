@@ -266,6 +266,18 @@ $this->load->view('admin/header');
                             <label>&nbsp;</label>
                             <button type="button" class="btn btn-primary" id="searchRecords" style="width: 100%; height: 40px;">Search</button>
                         </div>
+                        <div class="form-group col-md-3">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-success" id="processBtn" style="width: 100%; height: 40px;">Process</button>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-info" id="exportBtn" style="width: 100%; height: 40px;">Export CSV</button>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-warning" id="reportBtn" style="width: 100%; height: 40px;">Report</button>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -303,6 +315,36 @@ $this->load->view('admin/header');
     </div>
 </div>
 
+<!-- Report Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1" role="dialog" aria-labelledby="reportModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reportModalLabel">Generate Report</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm">
+                    <div class="form-group">
+                        <label for="reportFromDate">From Date <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control datepicker" id="reportFromDate" name="fromDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportToDate">To Date <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control datepicker" id="reportToDate" name="toDate" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="generateReportBtn">Generate Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Scripts -->
 <script src="<?php echo base_url('public/admin/plugins/jquery/jquery.min.js'); ?>"></script>
 <script src="<?php echo base_url('public/admin/plugins/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>
@@ -318,15 +360,15 @@ var issueTable;
 $(document).ready(function() {
     // Initialize datepickers
     $('.datepicker').datepicker({
-        dateFormat: 'yy-mm-dd',
+        dateFormat: 'dd-mm-yy',
         changeMonth: true,
         changeYear: true
     });
 
     // Set default dates
     var today = new Date();
-    $('#issuedate').val(formatDate(today));
-    $('#searchDate').val(formatDate(today));
+    $('#issuedate').val(formatDateDDMMYYYY(today));
+    $('#searchDate').val(formatDateDDMMYYYY(today));
 
     // Initialize Select2
     $('.select2').select2({
@@ -358,6 +400,24 @@ function formatDate(date) {
     if (day.length < 2) day = '0' + day;
 
     return [year, month, day].join('-');
+}
+
+function formatDateDDMMYYYY(date) {
+    var d = new Date(date),
+        month = '' + (d.getMonth() + 1),
+        day = '' + d.getDate(),
+        year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [day, month, year].join('-');
+}
+
+function convertDDMMYYYYtoYYYYMMDD(dateStr) {
+    // Convert dd-mm-yyyy to yyyy-mm-dd
+    var parts = dateStr.split('-');
+    return parts[2] + '-' + parts[1] + '-' + parts[0];
 }
 
 function showSpinner(show) {
@@ -428,7 +488,7 @@ $('#issueForm').on('submit', function(e) {
     showSpinner(true);
 
     var formData = {
-        issuedate: $('#issuedate').val(),
+        issuedate: convertDDMMYYYYtoYYYYMMDD($('#issuedate').val()),
         jcode_id: $('#quality').val(),
         godown_id: $('#godown').val(),
         bales: $('#bales').val(),
@@ -482,7 +542,7 @@ function clearForm() {
     $('#packcode').val('').trigger('change');
     
     var today = new Date();
-    $('#issuedate').val(formatDate(today));
+    $('#issuedate').val(formatDateDDMMYYYY(today));
 }
 
 $('#searchRecords').on('click', function() {
@@ -499,24 +559,106 @@ $('#issuedate').on('change', function() {
     searchRecords();
 });
 
+$('#processBtn').on('click', function() {
+    var searchDate = $('#searchDate').val();
+    
+    if (!searchDate) {
+        alert('Please select a date first');
+        return;
+    }
+    
+    if (confirm('Are you sure you want to process and update the weight field for this date?')) {
+        showSpinner(true);
+        
+        $.ajax({
+            url: '<?php echo base_url("admin/issueentry/process_update_weight"); ?>',
+            type: 'POST',
+            data: { issue_date: convertDDMMYYYYtoYYYYMMDD(searchDate) },
+            dataType: 'json',
+            success: function(response) {
+                showSpinner(false);
+                if (response.success) {
+                    alert(response.message);
+                    searchRecords();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                showSpinner(false);
+                alert('Error processing data');
+            }
+        });
+    }
+});
+
+$('#exportBtn').on('click', function() {
+    var searchDate = $('#searchDate').val();
+    
+    if (!searchDate) {
+        alert('Please select a date and search records first');
+        return;
+    }
+    
+    // Get the data from the DataTable
+    var data = issueTable.rows().data();
+    
+    if (data.length === 0) {
+        alert('No records found to export');
+        return;
+    }
+    
+    // Prepare CSV data
+    var csv = 'Issue Date,Quality,Godown,Bales,Weight,Unit,S/Type,Jute 01,Jute 02\n';
+    
+    data.each(function(row, index) {
+        // row is an array of cell values
+        csv += '"' + row[0] + '","' + row[1] + '","' + row[2] + '","' + row[3] + '","' + row[4] + '","' + row[5] + '","' + row[6] + '","' + row[7] + '","' + row[8] + '"\n';
+    });
+    
+    // Create a blob and download
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    
+    var fileName = 'issue_records_' + searchDate.replace(/-/g, '_') + '.csv';
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
 
 
 function searchRecords() {
     var searchDate = $('#searchDate').val();
+    // Convert dd-mm-yyyy to yyyy-mm-dd for database query
+    var dbDate = convertDDMMYYYYtoYYYYMMDD(searchDate);
     showSpinner(true);
     
     $.ajax({
         url: '<?php echo base_url("admin/issueentry/get_records"); ?>',
         type: 'POST',
-        data: { date: searchDate },
+        data: { date: dbDate },
         dataType: 'json',
         success: function(response) {
             showSpinner(false);
             issueTable.clear();
 
             $.each(response, function(index, record) {
+                // Convert issuedate from yyyy-mm-dd to dd-mm-yyyy for display
+                var displayDate = record.issuedate;
+                if (record.issuedate && record.issuedate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    var parts = record.issuedate.split('-');
+                    displayDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+                }
+                
                 issueTable.row.add([
-                    record.issuedate,
+                    displayDate,
                     record.quality || '',
                     record.godownno || '',
                     record.bales,
@@ -552,7 +694,14 @@ $(document).on('click', '.view-issue', function() {
     
     // Populate form from button data attributes
     $('#issue_id').val(issueId);
-    $('#issuedate').val($(this).data('issuedate'));
+    // Convert yyyy-mm-dd to dd-mm-yyyy for display
+    var issueDateDb = $(this).data('issuedate');
+    var displayIssueDate = issueDateDb;
+    if (issueDateDb && issueDateDb.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        var parts = issueDateDb.split('-');
+        displayIssueDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+    }
+    $('#issuedate').val(displayIssueDate);
     $('#quality').val($(this).data('jcode')).trigger('change');
     $('#godown').val($(this).data('godown')).trigger('change');
     $('#bales').val($(this).data('bales'));
@@ -683,6 +832,86 @@ function performIssueImport(issueDate, deleteExisting) {
         }
     });
 }
+
+$('#reportBtn').on('click', function() {
+    // Initialize datepickers in modal if not already done
+    $('#reportFromDate').datepicker({
+        dateFormat: 'dd-mm-yy',
+        changeMonth: true,
+        changeYear: true
+    });
+    $('#reportToDate').datepicker({
+        dateFormat: 'dd-mm-yy',
+        changeMonth: true,
+        changeYear: true
+    });
+    
+    // Get issue date from form
+    var issueDate = $('#issuedate').val(); // Format: yyyy-mm-dd
+    
+    // Convert yyyy-mm-dd to dd-mm-yyyy for display
+    if (issueDate) {
+        var parts = issueDate.split('-');
+        var issueDateFormatted = parts[2] + '-' + parts[1] + '-' + parts[0];
+        $('#reportFromDate').val(issueDateFormatted);
+        $('#reportToDate').val(issueDateFormatted);
+    } else {
+        // Fallback to today if no issue date
+        var today = new Date();
+        $('#reportFromDate').val(formatDateDDMMYYYY(today));
+        $('#reportToDate').val(formatDateDDMMYYYY(today));
+    }
+    
+    $('#reportModal').modal('show');
+});
+
+$('#generateReportBtn').on('click', function() {
+    var fromDate = $('#reportFromDate').val();
+    var toDate = $('#reportToDate').val();
+    
+    if (!fromDate || !toDate) {
+        alert('Please select both From Date and To Date');
+        return;
+    }
+    
+    // Parse dates in dd-mm-yyyy format for validation
+    var fromParts = fromDate.split('-');
+    var toParts = toDate.split('-');
+    var fromDateObj = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
+    var toDateObj = new Date(toParts[2], toParts[1] - 1, toParts[0]);
+    
+    if (fromDateObj > toDateObj) {
+        alert('From Date must be before To Date');
+        return;
+    }
+    
+    // Convert to yyyy-mm-dd format for backend
+    var fromDateBackend = convertDDMMYYYYtoYYYYMMDD(fromDate);
+    var toDateBackend = convertDDMMYYYYtoYYYYMMDD(toDate);
+    
+    showSpinner(true);
+    
+    $.ajax({
+        url: '<?php echo base_url("admin/issueentry/generate_report"); ?>',
+        type: 'POST',
+        data: { from_date: fromDateBackend, to_date: toDateBackend },
+        dataType: 'json',
+        success: function(response) {
+            showSpinner(false);
+            if (response.success) {
+                // Download Excel file
+                window.location.href = response.file_url;
+                $('#reportModal').modal('hide');
+            } else {
+                alert(response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            showSpinner(false);
+            alert('Error generating report: ' + error);
+        }
+    });
+});
 
 </script>
 

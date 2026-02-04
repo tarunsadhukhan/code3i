@@ -1,6 +1,11 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+
 class Issueentry extends CI_Controller {
 
     public function __construct() {
@@ -206,5 +211,363 @@ class Issueentry extends CI_Controller {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No data found for the selected date']);
         }
+    }
+
+    /**
+     * Process and calculate weight based on opening balance and received quantity
+     * Formula: weight = ((opening_weight + received_weight) / (opening_qty + received_qty)) * issued_qty
+     */
+    public function process_update_weight() {
+        $issue_date = $this->input->post('issue_date');
+        
+        if (!$issue_date) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Issue date is required']);
+            return;
+        }
+
+        $result = $this->Issueentry_model->calculate_and_update_weight($issue_date);
+        
+        header('Content-Type: application/json');
+        echo json_encode($result);
+    }
+
+    /**
+     * Generate report with opening balance, received, adjustment, and closing balance
+     */
+    public function generate_report() {
+        $from_date = $this->input->post('from_date');
+        $to_date = $this->input->post('to_date');
+        
+        if (!$from_date || !$to_date) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Both dates are required']);
+            return;
+        }
+
+        // Convert from dd-mm-yyyy to yyyy-mm-dd for query if needed
+        $from_date_db = $from_date;
+        $to_date_db = $to_date;
+        
+        // Check if dates are in dd-mm-yyyy format
+        if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $from_date)) {
+            $from_parts = explode('-', $from_date);
+            $from_date_db = $from_parts[2] . '-' . $from_parts[1] . '-' . $from_parts[0];
+        }
+        if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $to_date)) {
+            $to_parts = explode('-', $to_date);
+            $to_date_db = $to_parts[2] . '-' . $to_parts[1] . '-' . $to_parts[0];
+        }
+
+        $report_data = $this->Issueentry_model->get_report_data($from_date_db, $to_date_db);
+        
+        if (empty($report_data)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No data found for the selected date range']);
+            return;
+        }
+
+        // Generate Excel file
+        $file_name = 'issue_report_' . str_replace('-', '_', $from_date) . '_to_' . str_replace('-', '_', $to_date) . '.xlsx';
+        $file_path = $this->generate_excel_report($report_data, $file_name, $from_date_db, $to_date_db);
+        
+        if ($file_path) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Report generated successfully',
+                'file_url' => base_url('uploads/' . $file_name)
+            ]);
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Error generating Excel file']);
+        }
+    }
+
+    /**
+     * Generate Excel report
+     */
+    private function generate_excel_report($data, $file_name, $from_date = '', $to_date = '') {
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            
+            // Get company info from session
+            $company_id = $this->session->userdata('company_id');
+            $company_name = $this->session->userdata('company_name') ?? 'Company';
+            
+            // Add title row
+            $sheet->setCellValue('A1', $company_name);
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $sheet->mergeCells('A1:M1');
+            
+            // Add report title row
+            $period_text = '';
+            if ($from_date && $to_date) {
+                // Convert from yyyy-mm-dd to dd-mm-yyyy for display
+                $from_parts = explode('-', $from_date);
+                $to_parts = explode('-', $to_date);
+                $from_display = $from_parts[2] . '-' . $from_parts[1] . '-' . $from_parts[0];
+                $to_display = $to_parts[2] . '-' . $to_parts[1] . '-' . $to_parts[0];
+                $period_text = 'Stock Report for the Period ' . $from_display . ' to ' . $to_display;
+            } else {
+                $period_text = 'Stock Report';
+            }
+            
+            $sheet->setCellValue('A2', $period_text);
+            $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+            $sheet->mergeCells('A2:M2');
+            
+            // Empty row
+            $row = 4;
+            
+            // Set headers
+            $headers = [
+                'Quality Code',
+                'Quality',
+                'Godown No',
+                'Opening Bales',
+                'Opening Weight',
+                'Receive Bales',
+                'Received Weight',
+                'Issue Bales',
+                'Issue Weight',
+                'Adjustment Bales',
+                'Adjustment Weight',
+                'Closing Bales',
+                'Closing Weight'
+            ];
+            
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . $row, $header);
+                $col++;
+            }
+            
+            // Set header style
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('4472C4');
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->getColor()->setRGB('FFFFFF');
+            
+            // Add borders to header
+            $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+            
+            $row++;
+            $current_godown = '';
+            $godown_totals = [];
+            $grand_totals = [
+                'opening_bales' => 0,
+                'opening_weight' => 0,
+                'receive_bales' => 0,
+                'received_weight' => 0,
+                'issue_bales' => 0,
+                'issue_weight' => 0,
+                'adjustment_bales' => 0,
+                'adjustment_weight' => 0,
+                'closing_bales' => 0,
+                'closing_weight' => 0
+            ];
+            
+            // Add data rows
+            foreach ($data as $item) {
+                // Get godown name
+                $godown_name = isset($item['name']) ? $item['name'] : 'N/A';
+                
+                // Get quality code and name
+                $jcode = isset($item['jcode']) ? $item['jcode'] : '';
+                $quality = isset($item['quality']) ? $item['quality'] : '';
+                
+                // Calculate closing balance: opening + received - issue + adjustment
+                $closing_bales = ($item['opbales'] ?? 0) + ($item['rcvbales'] ?? 0) - ($item['issbales'] ?? 0) + ($item['adjbales'] ?? 0);
+                $closing_weight = ($item['opweight'] ?? 0) + ($item['rcvweight'] ?? 0) - ($item['issweight'] ?? 0) + ($item['adjweight'] ?? 0);
+                
+                // Add godown total row if godown changed
+                if ($current_godown && $current_godown != $godown_name) {
+                    $sheet->setCellValue('A' . $row, 'Godown Total: ' . $current_godown);
+                    $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+                    $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('D9E1F2');
+                    $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
+                    
+                    if (isset($godown_totals[$current_godown])) {
+                        $gt = $godown_totals[$current_godown];
+                        $sheet->setCellValue('D' . $row, $gt['opening_bales']);
+                        $sheet->setCellValue('E' . $row, $gt['opening_weight']);
+                        $sheet->setCellValue('F' . $row, $gt['receive_bales']);
+                        $sheet->setCellValue('G' . $row, $gt['received_weight']);
+                        $sheet->setCellValue('H' . $row, $gt['issue_bales']);
+                        $sheet->setCellValue('I' . $row, $gt['issue_weight']);
+                        $sheet->setCellValue('J' . $row, $gt['adjustment_bales']);
+                        $sheet->setCellValue('K' . $row, $gt['adjustment_weight']);
+                        $sheet->setCellValue('L' . $row, $gt['closing_bales']);
+                        $sheet->setCellValue('M' . $row, $gt['closing_weight']);
+                    }
+                    
+                    // Apply borders to godown total row
+                    $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+                    $row++;
+                }
+                
+                $sheet->setCellValue('A' . $row, $jcode);
+                $sheet->setCellValue('B' . $row, $quality);
+                $sheet->setCellValue('C' . $row, $godown_name);
+                $sheet->setCellValue('D' . $row, $item['opbales'] ?? 0);
+                $sheet->setCellValue('E' . $row, $item['opweight'] ?? 0);
+                $sheet->setCellValue('F' . $row, $item['rcvbales'] ?? 0);
+                $sheet->setCellValue('G' . $row, $item['rcvweight'] ?? 0);
+                $sheet->setCellValue('H' . $row, $item['issbales'] ?? 0);
+                $sheet->setCellValue('I' . $row, $item['issweight'] ?? 0);
+                $sheet->setCellValue('J' . $row, $item['adjbales'] ?? 0);
+                $sheet->setCellValue('K' . $row, $item['adjweight'] ?? 0);
+                $sheet->setCellValue('L' . $row, $closing_bales);
+                $sheet->setCellValue('M' . $row, $closing_weight);
+                
+                // Apply borders to data row
+                $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+                
+                // Track godown totals
+                if (!isset($godown_totals[$godown_name])) {
+                    $godown_totals[$godown_name] = [
+                        'opening_bales' => 0,
+                        'opening_weight' => 0,
+                        'receive_bales' => 0,
+                        'received_weight' => 0,
+                        'issue_bales' => 0,
+                        'issue_weight' => 0,
+                        'adjustment_bales' => 0,
+                        'adjustment_weight' => 0,
+                        'closing_bales' => 0,
+                        'closing_weight' => 0
+                    ];
+                }
+                
+                $godown_totals[$godown_name]['opening_bales'] += ($item['opbales'] ?? 0);
+                $godown_totals[$godown_name]['opening_weight'] += ($item['opweight'] ?? 0);
+                $godown_totals[$godown_name]['receive_bales'] += ($item['rcvbales'] ?? 0);
+                $godown_totals[$godown_name]['received_weight'] += ($item['rcvweight'] ?? 0);
+                $godown_totals[$godown_name]['issue_bales'] += ($item['issbales'] ?? 0);
+                $godown_totals[$godown_name]['issue_weight'] += ($item['issweight'] ?? 0);
+                $godown_totals[$godown_name]['adjustment_bales'] += ($item['adjbales'] ?? 0);
+                $godown_totals[$godown_name]['adjustment_weight'] += ($item['adjweight'] ?? 0);
+                $godown_totals[$godown_name]['closing_bales'] += $closing_bales;
+                $godown_totals[$godown_name]['closing_weight'] += $closing_weight;
+                
+                // Track grand totals
+                $grand_totals['opening_bales'] += ($item['opbales'] ?? 0);
+                $grand_totals['opening_weight'] += ($item['opweight'] ?? 0);
+                $grand_totals['receive_bales'] += ($item['rcvbales'] ?? 0);
+                $grand_totals['received_weight'] += ($item['rcvweight'] ?? 0);
+                $grand_totals['issue_bales'] += ($item['issbales'] ?? 0);
+                $grand_totals['issue_weight'] += ($item['issweight'] ?? 0);
+                $grand_totals['adjustment_bales'] += ($item['adjbales'] ?? 0);
+                $grand_totals['adjustment_weight'] += ($item['adjweight'] ?? 0);
+                $grand_totals['closing_bales'] += $closing_bales;
+                $grand_totals['closing_weight'] += $closing_weight;
+                
+                $current_godown = $godown_name;
+                $row++;
+            }
+            
+            // Add last godown total
+            if ($current_godown) {
+                $sheet->setCellValue('A' . $row, 'Godown Total: ' . $current_godown);
+                $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+                $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('D9E1F2');
+                $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
+                
+                if (isset($godown_totals[$current_godown])) {
+                    $gt = $godown_totals[$current_godown];
+                    $sheet->setCellValue('D' . $row, $gt['opening_bales']);
+                    $sheet->setCellValue('E' . $row, $gt['opening_weight']);
+                    $sheet->setCellValue('F' . $row, $gt['receive_bales']);
+                    $sheet->setCellValue('G' . $row, $gt['received_weight']);
+                    $sheet->setCellValue('H' . $row, $gt['issue_bales']);
+                    $sheet->setCellValue('I' . $row, $gt['issue_weight']);
+                    $sheet->setCellValue('J' . $row, $gt['adjustment_bales']);
+                    $sheet->setCellValue('K' . $row, $gt['adjustment_weight']);
+                    $sheet->setCellValue('L' . $row, $gt['closing_bales']);
+                    $sheet->setCellValue('M' . $row, $gt['closing_weight']);
+                }
+                
+                // Apply borders to last godown total row
+                $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+                $row++;
+            }
+            
+            // Add grand total row
+            $row++;
+            $sheet->setCellValue('A' . $row, 'GRAND TOTAL');
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('92D050');
+            $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
+            
+            $sheet->setCellValue('D' . $row, $grand_totals['opening_bales']);
+            $sheet->setCellValue('E' . $row, $grand_totals['opening_weight']);
+            $sheet->setCellValue('F' . $row, $grand_totals['receive_bales']);
+            $sheet->setCellValue('G' . $row, $grand_totals['received_weight']);
+            $sheet->setCellValue('H' . $row, $grand_totals['issue_bales']);
+            $sheet->setCellValue('I' . $row, $grand_totals['issue_weight']);
+            $sheet->setCellValue('J' . $row, $grand_totals['adjustment_bales']);
+            $sheet->setCellValue('K' . $row, $grand_totals['adjustment_weight']);
+            $sheet->setCellValue('L' . $row, $grand_totals['closing_bales']);
+            $sheet->setCellValue('M' . $row, $grand_totals['closing_weight']);
+            
+            // Apply borders to grand total row
+            $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+            
+            // Set column widths
+            $sheet->getColumnDimension('A')->setWidth(15);
+            $sheet->getColumnDimension('B')->setWidth(20);
+            $sheet->getColumnDimension('C')->setWidth(15);
+            for ($col = 'D'; $col <= 'M'; $col++) {
+                $sheet->getColumnDimension($col)->setWidth(16);
+            }
+            
+            // Save file using PhpSpreadsheet
+            $file_path = FCPATH . 'uploads/' . $file_name;
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($file_path);
+            
+            return $file_path;
+            
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Apply borders to a cell range
+     */
+    private function applyBorders($sheet, $range) {
+        $style = array(
+            'borders' => array(
+                'top' => array(
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => array('rgb' => '000000'),
+                ),
+                'bottom' => array(
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => array('rgb' => '000000'),
+                ),
+                'left' => array(
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => array('rgb' => '000000'),
+                ),
+                'right' => array(
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => array('rgb' => '000000'),
+                ),
+                'vertical' => array(
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => array('rgb' => '000000'),
+                ),
+                'horizontal' => array(
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => array('rgb' => '000000'),
+                ),
+            ),
+        );
+        
+        $sheet->getStyle($range)->applyFromArray($style);
     }
 }
