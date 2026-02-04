@@ -324,6 +324,128 @@ public function print_multi()
     exit;
 }
 
+public function downloadExcel()
+{
+    // Get period from and to dates from URL
+    $periodFrom = $this->input->get('period_from', TRUE);
+    $periodTo = $this->input->get('period_to', TRUE);
+    
+    // Validate dates
+    if (empty($periodFrom) || empty($periodTo)) {
+        show_error('Invalid date range', 400);
+    }
+    
+    // Convert dates from dd-mm-yyyy to yyyy-mm-dd for database query
+    $fromDateParts = explode('-', $periodFrom);
+    $toDateParts = explode('-', $periodTo);
+    
+    if (count($fromDateParts) !== 3 || count($toDateParts) !== 3) {
+        show_error('Invalid date format', 400);
+    }
+    
+    $fromDate = $fromDateParts[2] . '-' . $fromDateParts[1] . '-' . $fromDateParts[0];
+    $toDate = $toDateParts[2] . '-' . $toDateParts[1] . '-' . $toDateParts[0];
+    
+    // Fetch data from database for the period
+    $sql = "
+        SELECT
+            A.tran_id,
+            B.eb_no,
+            CONCAT(B.worker_name, ' ', B.middle_name, ' ', B.last_name) AS wrk_name,
+            DATE_FORMAT(A.gate_pass_date,'%d-%b-%Y') AS gate_pass_date,
+            A.shift,
+            DATE_FORMAT(A.absent_from,'%d-%b-%Y') AS absent_from,
+            DATE_FORMAT(A.absent_to,'%d-%b-%Y') AS absent_to,
+            A.no_of_days,
+            A.reasons,
+            A.pass_given_by
+        FROM EMPMILL12.WORKERGATEPASSTBL A
+        LEFT JOIN worker_master B ON A.eb_id = B.eb_id
+        WHERE DATE(A.gate_pass_date) >= ? AND DATE(A.gate_pass_date) <= ?
+        ORDER BY A.gate_pass_date DESC, B.eb_no
+    ";
+    
+    $rows = $this->db->query($sql, [$fromDate, $toDate])->result_array();
+    
+    if (empty($rows)) {
+        show_error('No records found for the selected period', 404);
+    }
+    
+    // Create spreadsheet
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    
+    // Set column widths
+    $sheet->getColumnDimension('A')->setWidth(10);
+    $sheet->getColumnDimension('B')->setWidth(12);
+    $sheet->getColumnDimension('C')->setWidth(25);
+    $sheet->getColumnDimension('D')->setWidth(15);
+    $sheet->getColumnDimension('E')->setWidth(10);
+    $sheet->getColumnDimension('F')->setWidth(15);
+    $sheet->getColumnDimension('G')->setWidth(15);
+    $sheet->getColumnDimension('H')->setWidth(10);
+    $sheet->getColumnDimension('I')->setWidth(25);
+    $sheet->getColumnDimension('J')->setWidth(20);
+    
+    // Create header row
+    $headers = ['TRAN_ID', 'EB_NO', 'NAME', 'GATE PASS DATE', 'SHIFT', 'ABSENT FROM', 'ABSENT TO', 'DAYS', 'REASONS', 'AUTHORITY'];
+    
+    foreach ($headers as $index => $header) {
+        $cell = $sheet->getCellByColumnAndRow($index + 1, 1);
+        $cell->setValue($header);
+        $cell->getStyle()->getFont()->setBold(true);
+        $cell->getStyle()->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FFFFFF'));
+        $cell->getStyle()->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+        $cell->getStyle()->getFill()->getStartColor()->setARGB('FF0070C0');
+        $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $cell->getStyle()->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+    }
+    
+    // Add data rows
+    $rowNum = 2;
+    foreach ($rows as $row) {
+        $sheet->setCellValueByColumnAndRow(1, $rowNum, $row['tran_id']);
+        $sheet->setCellValueByColumnAndRow(2, $rowNum, $row['eb_no']);
+        $sheet->setCellValueByColumnAndRow(3, $rowNum, $row['wrk_name']);
+        $sheet->setCellValueByColumnAndRow(4, $rowNum, $row['gate_pass_date']);
+        $sheet->setCellValueByColumnAndRow(5, $rowNum, $row['shift']);
+        $sheet->setCellValueByColumnAndRow(6, $rowNum, $row['absent_from']);
+        $sheet->setCellValueByColumnAndRow(7, $rowNum, $row['absent_to']);
+        $sheet->setCellValueByColumnAndRow(8, $rowNum, $row['no_of_days']);
+        $sheet->setCellValueByColumnAndRow(9, $rowNum, $row['reasons']);
+        $sheet->setCellValueByColumnAndRow(10, $rowNum, $row['pass_given_by']);
+        
+        $rowNum++;
+    }
+    
+    // Add borders to all cells with data
+    $lastRow = $rowNum - 1;
+    $range = 'A1:J' . $lastRow;
+    $sheet->getStyle($range)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+    
+    // Add text wrapping to all cells
+    $sheet->getStyle($range)->getAlignment()->setWrapText(true);
+    
+    // Center align data columns (except NAME and REASONS)
+    for ($col = 1; $col <= 10; $col++) {
+        if ($col !== 3 && $col !== 9) { // Skip NAME and REASONS columns
+            $sheet->getStyle('A2:J' . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        }
+    }
+    
+    // Generate Excel file
+    $fileName = 'Worker_Gate_Pass_' . date('Y-m-d_H-i-s') . '.xlsx';
+    $writer = new Xlsx($spreadsheet);
+    
+    // Output to browser
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $fileName . '"');
+    header('Cache-Control: max-age=0');
+    
+    $writer->save('php://output');
+    exit;
+}
+
 private function _print_joining_pass_letter(FPDF $pdf, array $r)
 {
     // ----- DATA (safe defaults) -----

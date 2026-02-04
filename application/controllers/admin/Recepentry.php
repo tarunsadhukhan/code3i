@@ -262,6 +262,9 @@ class Recepentry extends CI_Controller {
         $records = $this->Recepentry_model->get_receipts_by_date($date, $this->session->userdata('company_id'));
         
         $data = [];
+        $totalBales = 0;
+        $totalWeight = 0;
+        
         foreach ($records as $record) {
             $data[] = [
                 $record->recpmast_id,
@@ -278,9 +281,19 @@ class Recepentry extends CI_Controller {
                 $record->claimqt,
                 $record->claimmoist
             ];
+            
+            // Calculate totals
+            $totalBales += floatval($record->recpbales);
+            $totalWeight += floatval($record->netweight);
         }
         
-        echo json_encode(['data' => $data]);
+        echo json_encode([
+            'data' => $data,
+            'totals' => [
+                'bales' => $totalBales,
+                'weight' => $totalWeight
+            ]
+        ]);
     }
 
     /**

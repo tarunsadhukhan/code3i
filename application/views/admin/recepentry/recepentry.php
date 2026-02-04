@@ -36,6 +36,35 @@ $this->load->view('admin/header');
         background-color: #2E86C1;
     }
 
+    #receprecordTable tr.grand-total-row {
+        background-color: #E8F4F8 !important;
+        font-weight: bold;
+        border-top: 3px solid #1589FF;
+        border-bottom: 3px solid #1589FF;
+    }
+
+    #receprecordTable tr.grand-total-row:hover {
+        background-color: #E8F4F8 !important;
+    }
+
+    #grandTotalTable {
+        border-collapse: collapse;
+    }
+
+    #grandTotalTable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    #grandTotalTable tr.grand-total-row {
+        background-color: #E8F4F8 !important;
+        font-weight: bold;
+        border-top: 3px solid #1589FF;
+        border-bottom: 3px solid #1589FF;
+    }
+
     .selected {
         background-color: yellow;
     }
@@ -413,6 +442,28 @@ $this->load->view('admin/header');
                     </tbody>
                 </table>
 
+                <!-- Grand Total Table -->
+                <table id="grandTotalTable" style="width: 100%; margin-top: -1px;">
+                    <tbody>
+                        <tr class="grand-total-row">
+                            <td style="width: 50px;"></td>
+                            <td style="width: 100px;"></td>
+                            <td style="width: 100px;"></td>
+                            <td style="width: 250px;"></td>
+                            <td style="width: 100px;"></td>
+                            <td style="width: 100px;"></td>
+                            <td style="width: 150px;"></td>
+                            <td style="width: 150px;"><strong style="color: #1589FF;">GRAND TOTAL</strong></td>
+                            <td style="width: 100px;"></td>
+                            <td style="width: 80px;"><strong style="color: #1589FF;" id="totalBales">0.00</strong></td>
+                            <td style="width: 120px;"><strong style="color: #1589FF;" id="totalWeight">0.00</strong></td>
+                            <td style="width: 80px;"></td>
+                            <td style="width: 100px;"></td>
+                            <td style="width: 150px;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+
             </div>
         </div>
     </div>
@@ -655,6 +706,38 @@ function initDataTable() {
             { targets: [0], visible: false }
         ]
     });
+    
+    // Update totals when search/filter changes
+    table.on('search.dt', function() {
+        updateTotalsFromVisibleRows();
+    });
+    
+    table.on('page.dt', function() {
+        updateTotalsFromVisibleRows();
+    });
+}
+
+function updateTotalsFromVisibleRows() {
+    try {
+        var totalBales = 0;
+        var totalWeight = 0;
+        
+        // Calculate totals from visible rows only
+        table.rows({search: 'applied'}).nodes().to$().each(function() {
+            var $cells = $(this).find('td');
+            if ($cells.length > 0) {
+                totalBales += parseFloat($cells.eq(9).text()) || 0;     // bales
+                totalWeight += parseFloat($cells.eq(10).text()) || 0;   // weight
+            }
+        });
+        
+        // Update grand total table
+        $('#totalBales').text(totalBales.toFixed(2));
+        $('#totalWeight').text(totalWeight.toFixed(2));
+        
+    } catch(e) {
+        console.error('Error updating totals:', e);
+    }
 }
 
 function refreshDataTable() {
@@ -668,32 +751,54 @@ function refreshDataTable() {
         success: function(response) {
             $('#spinnerContainer').removeClass('show');
             
-            table.clear();
-            
-            $.each(response.data, function(index, record) {
-                table.row.add([
-                    record[0],  // recpmast_id (hidden)
-                    record[1],  // recpno
-                    record[2],  // inwarddate
-                    record[3],  // party
-                    record[4],  // challno
-                    record[5],  // lorryno
-                    record[6],  // agency
-                    record[7],  // quality
-                    record[8],  // godownno
-                    record[9],  // recpbales
-                    record[10], // netweight
-                    record[11], // claimqt
-                    record[12], // claimmoist
-                    '<button class="btn btn-info btn-sm view-receipt" data-id="' + record[0] + '" data-recpno="' + record[1] + '" data-inwarddate="' + record[2] + '" data-party="' + record[3] + '" data-challno="' + (record[4] || '') + '" data-lorryno="' + (record[5] || '') + '" data-agency="' + record[6] + '" data-quality="' + record[7] + '" data-godownno="' + record[8] + '" data-recpbales="' + record[9] + '" data-netweight="' + record[10] + '" data-claimqt="' + (record[11] || '') + '" data-claimmoist="' + (record[12] || '') + '">Edit</button> ' +
-                    '<button class="btn btn-danger btn-sm delete-receipt" data-id="' + record[0] + '">Delete</button>'
-                ]);
-            });
-            
-            table.draw();
+            try {
+                if (!response.data || response.data.length === 0) {
+                    table.clear().draw();
+                    $('#totalBales').text('0.00');
+                    $('#totalWeight').text('0.00');
+                    return;
+                }
+                
+                table.clear();
+                
+                // Add data rows
+                $.each(response.data, function(index, record) {
+                    table.row.add([
+                        record[0],  // recpmast_id (hidden)
+                        record[1],  // recpno
+                        record[2],  // inwarddate
+                        record[3],  // party
+                        record[4],  // challno
+                        record[5],  // lorryno
+                        record[6],  // agency
+                        record[7],  // quality
+                        record[8],  // godownno
+                        record[9],  // recpbales
+                        record[10], // netweight
+                        record[11], // claimqt
+                        record[12], // claimmoist
+                        '<button class="btn btn-info btn-sm view-receipt" data-id="' + record[0] + '" data-recpno="' + record[1] + '" data-inwarddate="' + record[2] + '" data-party="' + record[3] + '" data-challno="' + (record[4] || '') + '" data-lorryno="' + (record[5] || '') + '" data-agency="' + record[6] + '" data-quality="' + record[7] + '" data-godownno="' + record[8] + '" data-recpbales="' + record[9] + '" data-netweight="' + record[10] + '" data-claimqt="' + (record[11] || '') + '" data-claimmoist="' + (record[12] || '') + '">Edit</button> ' +
+                        '<button class="btn btn-danger btn-sm delete-receipt" data-id="' + record[0] + '">Delete</button>'
+                    ]);
+                });
+                
+                // Draw table
+                table.draw();
+                
+                // Update grand total table from server response
+                if (response.totals) {
+                    $('#totalBales').text(parseFloat(response.totals.bales).toFixed(2));
+                    $('#totalWeight').text(parseFloat(response.totals.weight).toFixed(2));
+                }
+                
+            } catch(e) {
+                console.error('Error in refreshDataTable:', e);
+                $('#spinnerContainer').removeClass('show');
+            }
         },
-        error: function() {
+        error: function(xhr, status, error) {
             $('#spinnerContainer').removeClass('show');
+            console.error('AJAX Error:', status, error);
         }
     });
 }

@@ -108,6 +108,7 @@
             <button id="savetab" class="btn btn-primary">Save</button>
             <button id="deltab" class="btn btn-danger">Delete</button>
             <button id="printSelected" class="btn btn-secondary">Print</button>
+            <button id="downloadExcel" class="btn btn-info">Download Excel</button>
             <button id="resettab" class="btn btn-warning">Reset</button>
             <span id="loading" style="margin-left:10px;"></span>
           </div>
@@ -141,7 +142,35 @@
   </thead>
   <tbody></tbody>
 </table>
-
+<!-- Period Filter Modal -->
+<div class="modal fade" id="periodFilterModal" tabindex="-1" role="dialog" aria-labelledby="periodFilterModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="periodFilterModalLabel">Download Excel Report</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="excelFilterForm">
+          <div class="form-group">
+            <label for="period_from">Period From:</label>
+            <input type="text" class="form-control date" id="period_from" placeholder="dd-mm-yyyy" required>
+          </div>
+          <div class="form-group">
+            <label for="period_to">Period To:</label>
+            <input type="text" class="form-control date" id="period_to" placeholder="dd-mm-yyyy" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="submitExcelFilter">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
       </div>
     </div>
   </div>
@@ -691,6 +720,67 @@ $('#absent_to').on('change', function () {
 // Run when either date changes OR loses focus
  
 // Run when either date changes OR loses focus
+
+// Excel Download Modal and Download Handler
+$('#downloadExcel').on('click', function (e) {
+  e.preventDefault();
+  // Clear previous values
+  $('#period_from').val('');
+  $('#period_to').val('');
+  // Show modal
+  $('#periodFilterModal').modal('show');
+});
+
+// Initialize datepickers for period inputs
+$("#period_from").datepicker({
+    dateFormat: 'dd-mm-yy',
+    todayHighlight: 'TRUE',
+    autoclose: true,
+});
+
+$("#period_to").datepicker({
+    dateFormat: 'dd-mm-yy',
+    todayHighlight: 'TRUE',
+    autoclose: true,
+});
+
+// Submit Excel Filter
+$('#submitExcelFilter').on('click', function (e) {
+  e.preventDefault();
   
+  var periodFrom = $('#period_from').val();
+  var periodTo = $('#period_to').val();
+  
+  if (!periodFrom) {
+    alert('Please select Period From date');
+    $('#period_from').focus();
+    return;
+  }
+  
+  if (!periodTo) {
+    alert('Please select Period To date');
+    $('#period_to').focus();
+    return;
+  }
+  
+  // Validate dates
+  var dateFrom = new Date(periodFrom.split('-').reverse().join('-'));
+  var dateTo = new Date(periodTo.split('-').reverse().join('-'));
+  
+  if (dateFrom > dateTo) {
+    alert('Period From date cannot be greater than Period To date');
+    return;
+  }
+  
+  // Hide modal
+  $('#periodFilterModal').modal('hide');
+  
+  // Trigger Excel download
+  var url = "<?php echo base_url('admin/reports/WorkerGatePass/downloadExcel'); ?>" +
+            '?period_from=' + encodeURIComponent(periodFrom) +
+            '&period_to=' + encodeURIComponent(periodTo);
+  
+  window.location.href = url;
+});
 
 </script>
