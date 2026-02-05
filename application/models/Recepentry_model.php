@@ -261,7 +261,7 @@ class Recepentry_model extends CI_Model {
             recpbales,packcode,netweight,jute01,jute02)
            select rh.recpmast_id,smli.warehouse_no ,vl.jute01_jcode_id  ,
             case when smli.actual_bale>0 then smli.actual_bale else smli.actual_loose end bales,
-case when smli.actual_bale>0 then 3 else 5 end packcode,smli.actual_weight,'Y' j01,'Y' j02
+case when smli.actual_bale>0 then 3 else 5 end packcode,smli.actual_weight*100,'Y' j01,'Y' j02
 from scm_mr_line_item smli 
 left join scm_mr_hdr smh on smh.jute_receive_no =smli.jute_receive_no 
 left join EMPMILL12.recpheader rh on rh.recpno =smh.jute_receive_no
