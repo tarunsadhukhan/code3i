@@ -176,6 +176,9 @@ class Issueentry extends CI_Controller {
         header('Content-Type: application/json');
         
         $issue_date = $this->input->post('issue_date');
+
+        $issue_date=substr($issue_date,6,4)."-".substr($issue_date,3,2)."-".substr($issue_date,0,2);    
+
         
         if (!$issue_date) {
             echo json_encode(['exists' => false, 'message' => 'Issue date is required']);
@@ -190,7 +193,8 @@ class Issueentry extends CI_Controller {
     public function import_jute_issue() {
         $issue_date = $this->input->post('issue_date');
         $delete_existing = $this->input->post('delete_existing');
-        
+        $issue_date=substr($issue_date,6,4)."-".substr($issue_date,3,2)."-".substr($issue_date,0,2);    
+     
         if (!$issue_date) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Issue date is required']);
@@ -238,7 +242,10 @@ class Issueentry extends CI_Controller {
     public function generate_report() {
         $from_date = $this->input->post('from_date');
         $to_date = $this->input->post('to_date');
-        
+  
+              $from_date=substr($from_date,6,4)."-".substr($from_date,3,2)."-".substr($from_date,0,2);    
+              $to_date=substr($to_date,6,4)."-".substr($to_date,3,2)."-".substr($to_date,0,2);    
+  
         if (!$from_date || !$to_date) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Both dates are required']);
@@ -299,7 +306,7 @@ class Issueentry extends CI_Controller {
             // Add title row
             $sheet->setCellValue('A1', $company_name);
             $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-            $sheet->mergeCells('A1:M1');
+            $sheet->mergeCells('A1:N1');
             
             // Add report title row
             $period_text = '';
@@ -316,7 +323,7 @@ class Issueentry extends CI_Controller {
             
             $sheet->setCellValue('A2', $period_text);
             $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
-            $sheet->mergeCells('A2:M2');
+            $sheet->mergeCells('A2:N2');
             
             // Empty row
             $row = 4;
@@ -325,6 +332,7 @@ class Issueentry extends CI_Controller {
             $headers = [
                 'Quality Code',
                 'Quality',
+                'Packing',
                 'Godown No',
                 'Opening Bales',
                 'Opening Weight',
@@ -344,14 +352,13 @@ class Issueentry extends CI_Controller {
                 $col++;
             }
             
-            // Set header style
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('4472C4');
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->getColor()->setRGB('FFFFFF');
+            // Set header styleN' . $row)->getFont()->setBold(true);
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->getStartColor()->setRGB('4472C4');
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFont()->getColor()->setRGB('FFFFFF');
             
             // Add borders to header
-            $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+            $this->applyBorders($sheet, 'A' . $row . ':N' . $row);
             
             $row++;
             $current_godown = '';
@@ -385,44 +392,46 @@ class Issueentry extends CI_Controller {
                 // Add godown total row if godown changed
                 if ($current_godown && $current_godown != $godown_name) {
                     $sheet->setCellValue('A' . $row, 'Godown Total: ' . $current_godown);
-                    $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
-                    $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('D9E1F2');
-                    $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
+                    $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+                    $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->getStartColor()->setRGB('D9E1F2');
+                    $sheet->getStyle('A' . $row . ':N' . $row)->getFont()->setBold(true);
                     
                     if (isset($godown_totals[$current_godown])) {
                         $gt = $godown_totals[$current_godown];
-                        $sheet->setCellValue('D' . $row, $gt['opening_bales']);
-                        $sheet->setCellValue('E' . $row, $gt['opening_weight']);
-                        $sheet->setCellValue('F' . $row, $gt['receive_bales']);
-                        $sheet->setCellValue('G' . $row, $gt['received_weight']);
-                        $sheet->setCellValue('H' . $row, $gt['issue_bales']);
-                        $sheet->setCellValue('I' . $row, $gt['issue_weight']);
-                        $sheet->setCellValue('J' . $row, $gt['adjustment_bales']);
-                        $sheet->setCellValue('K' . $row, $gt['adjustment_weight']);
-                        $sheet->setCellValue('L' . $row, $gt['closing_bales']);
-                        $sheet->setCellValue('M' . $row, $gt['closing_weight']);
+                        $sheet->setCellValue('E' . $row, $gt['opening_bales']);
+                        $sheet->setCellValue('F' . $row, $gt['opening_weight']);
+                        $sheet->setCellValue('G' . $row, $gt['receive_bales']);
+                        $sheet->setCellValue('H' . $row, $gt['received_weight']);
+                        $sheet->setCellValue('I' . $row, $gt['issue_bales']);
+                        $sheet->setCellValue('J' . $row, $gt['issue_weight']);
+                        $sheet->setCellValue('K' . $row, $gt['adjustment_bales']);
+                        $sheet->setCellValue('L' . $row, $gt['adjustment_weight']);
+                        $sheet->setCellValue('M' . $row, $gt['closing_bales']);
+                        $sheet->setCellValue('N' . $row, $gt['closing_weight']);
                     }
                     
                     // Apply borders to godown total row
-                    $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
+                    $this->applyBorders($sheet, 'A' . $row . ':N' . $row);
                     $row++;
                 }
                 
                 $sheet->setCellValue('A' . $row, $jcode);
                 $sheet->setCellValue('B' . $row, $quality);
-                $sheet->setCellValue('C' . $row, $godown_name);
-                $sheet->setCellValue('D' . $row, $item['opbales'] ?? 0);
-                $sheet->setCellValue('E' . $row, $item['opweight'] ?? 0);
-                $sheet->setCellValue('F' . $row, $item['rcvbales'] ?? 0);
-                $sheet->setCellValue('G' . $row, $item['rcvweight'] ?? 0);
-                $sheet->setCellValue('H' . $row, $item['issbales'] ?? 0);
-                $sheet->setCellValue('I' . $row, $item['issweight'] ?? 0);
-                $sheet->setCellValue('J' . $row, $item['adjbales'] ?? 0);
-                $sheet->setCellValue('K' . $row, $item['adjweight'] ?? 0);
-                $sheet->setCellValue('L' . $row, $closing_bales);
-                $sheet->setCellValue('M' . $row, $closing_weight);
+                $sheet->setCellValue('C' . $row, isset($item['packcode']) ? $item['packcode'] : '');
+                $sheet->setCellValue('D' . $row, $godown_name);
+                $sheet->setCellValue('E' . $row, $item['opbales'] ?? 0);
+                $sheet->setCellValue('F' . $row, $item['opweight'] ?? 0);
+                $sheet->setCellValue('G' . $row, $item['rcvbales'] ?? 0);
+                $sheet->setCellValue('H' . $row, $item['rcvweight'] ?? 0);
+                $sheet->setCellValue('I' . $row, $item['issbales'] ?? 0);
+                $sheet->setCellValue('J' . $row, $item['issweight'] ?? 0);
+                $sheet->setCellValue('K' . $row, $item['adjbales'] ?? 0);
+                $sheet->setCellValue('L' . $row, $item['adjweight'] ?? 0);
+                $sheet->setCellValue('M' . $row, $closing_bales);
+                $sheet->setCellValue('N' . $row, $closing_weight);
                 
                 // Apply borders to data row
+         //       $this->applyBorders($sheet, 'A' . $row . ':N' . $row);
                 $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
                 
                 // Track godown totals
@@ -471,54 +480,59 @@ class Issueentry extends CI_Controller {
             // Add last godown total
             if ($current_godown) {
                 $sheet->setCellValue('A' . $row, 'Godown Total: ' . $current_godown);
-                $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
-                $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('D9E1F2');
-                $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
+                $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+                $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->getStartColor()->setRGB('D9E1F2');
+                $sheet->getStyle('A' . $row . ':N' . $row)->getFont()->setBold(true);
                 
                 if (isset($godown_totals[$current_godown])) {
                     $gt = $godown_totals[$current_godown];
-                    $sheet->setCellValue('D' . $row, $gt['opening_bales']);
-                    $sheet->setCellValue('E' . $row, $gt['opening_weight']);
-                    $sheet->setCellValue('F' . $row, $gt['receive_bales']);
-                    $sheet->setCellValue('G' . $row, $gt['received_weight']);
-                    $sheet->setCellValue('H' . $row, $gt['issue_bales']);
-                    $sheet->setCellValue('I' . $row, $gt['issue_weight']);
-                    $sheet->setCellValue('J' . $row, $gt['adjustment_bales']);
-                    $sheet->setCellValue('K' . $row, $gt['adjustment_weight']);
-                    $sheet->setCellValue('L' . $row, $gt['closing_bales']);
-                    $sheet->setCellValue('M' . $row, $gt['closing_weight']);
+                    $sheet->setCellValue('E' . $row, $gt['opening_bales']);
+                    $sheet->setCellValue('F' . $row, $gt['opening_weight']);
+                    $sheet->setCellValue('G' . $row, $gt['receive_bales']);
+                    $sheet->setCellValue('H' . $row, $gt['received_weight']);
+                    $sheet->setCellValue('I' . $row, $gt['issue_bales']);
+                    $sheet->setCellValue('J' . $row, $gt['issue_weight']);
+                    $sheet->setCellValue('K' . $row, $gt['adjustment_bales']);
+                    $sheet->setCellValue('L' . $row, $gt['adjustment_weight']);
+                    $sheet->setCellValue('M' . $row, $gt['closing_bales']);
+                    $sheet->setCellValue('N' . $row, $gt['closing_weight']);
                 }
                 
                 // Apply borders to last godown total row
+             //   $this->applyBorders($sheet, 'A' . $row . ':N
+            
                 $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
                 $row++;
             }
             
             // Add grand total row
             $row++;
-            $sheet->setCellValue('A' . $row, 'GRAND TOTAL');
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFill()->getStartColor()->setRGB('92D050');
-            $sheet->getStyle('A' . $row . ':M' . $row)->getFont()->setBold(true);
             
-            $sheet->setCellValue('D' . $row, $grand_totals['opening_bales']);
-            $sheet->setCellValue('E' . $row, $grand_totals['opening_weight']);
-            $sheet->setCellValue('F' . $row, $grand_totals['receive_bales']);
-            $sheet->setCellValue('G' . $row, $grand_totals['received_weight']);
-            $sheet->setCellValue('H' . $row, $grand_totals['issue_bales']);
-            $sheet->setCellValue('I' . $row, $grand_totals['issue_weight']);
-            $sheet->setCellValue('J' . $row, $grand_totals['adjustment_bales']);
-            $sheet->setCellValue('K' . $row, $grand_totals['adjustment_weight']);
-            $sheet->setCellValue('L' . $row, $grand_totals['closing_bales']);
-            $sheet->setCellValue('M' . $row, $grand_totals['closing_weight']);
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->setFillType(Fill::FILL_SOLID);
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFill()->getStartColor()->setRGB('92D050');
+            $sheet->getStyle('A' . $row . ':N' . $row)->getFont()->setBold(true);
             
+            $sheet->setCellValue('E' . $row, $grand_totals['opening_bales']);
+            $sheet->setCellValue('F' . $row, $grand_totals['opening_weight']);
+            $sheet->setCellValue('G' . $row, $grand_totals['receive_bales']);
+            $sheet->setCellValue('H' . $row, $grand_totals['received_weight']);
+            $sheet->setCellValue('I' . $row, $grand_totals['issue_bales']);
+            $sheet->setCellValue('J' . $row, $grand_totals['issue_weight']);
+            $sheet->setCellValue('K' . $row, $grand_totals['adjustment_bales']);
+            $sheet->setCellValue('L' . $row, $grand_totals['adjustment_weight']);
+            $sheet->setCellValue('M' . $row, $grand_totals['closing_bales']);
+            $sheet->setCellValue('N' . $row, $grand_totals['closing_weight']);
+            
+            // Apply borders to grand total row
+//            $this->applyBorders($sheet, 'A' . $row . ':N
             // Apply borders to grand total row
             $this->applyBorders($sheet, 'A' . $row . ':M' . $row);
             
             // Set column widths
             $sheet->getColumnDimension('A')->setWidth(15);
             $sheet->getColumnDimension('B')->setWidth(20);
-            $sheet->getColumnDimension('C')->setWidth(15);
+            $sheet->getColumnDimension('D')->setWidth(15);
+  //          for ($col = 'E'; $col <= 'N'C')->setWidth(15);
             for ($col = 'D'; $col <= 'M'; $col++) {
                 $sheet->getColumnDimension($col)->setWidth(16);
             }
