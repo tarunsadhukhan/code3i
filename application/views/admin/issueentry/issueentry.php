@@ -38,6 +38,35 @@ $this->load->view('admin/header');
         background-color: #2E86C1;
     }
 
+    #issuerecordTable tr.grand-total-row {
+        background-color: #E8F4F8 !important;
+        font-weight: bold;
+        border-top: 3px solid #1589FF;
+        border-bottom: 3px solid #1589FF;
+    }
+
+    #issuerecordTable tr.grand-total-row:hover {
+        background-color: #E8F4F8 !important;
+    }
+
+    #grandTotalTable {
+        border-collapse: collapse;
+    }
+
+    #grandTotalTable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    #grandTotalTable tr.grand-total-row {
+        background-color: #E8F4F8 !important;
+        font-weight: bold;
+        border-top: 3px solid #1589FF;
+        border-bottom: 3px solid #1589FF;
+    }
+
     .selected {
         background-color: yellow;
     }
@@ -297,6 +326,24 @@ $this->load->view('admin/header');
                                 </tr>
                             </thead>
                             <tbody>
+                            </tbody>
+                        </table>
+
+                        <!-- Grand Total Table -->
+                        <table id="grandTotalTable" style="width: 100%; margin-top: -1px;">
+                            <tbody>
+                                <tr class="grand-total-row">
+                                    <td style="width: 120px;"></td>
+                                    <td style="width: 100px;"></td>
+                                    <td style="width: 100px;"></td>
+                                    <td style="width: 80px;"><strong style="color: #1589FF;">GRAND TOTAL</strong></td>
+                                    <td style="width: 100px;"><strong style="color: #1589FF;" id="totalBales">0.00</strong></td>
+                                    <td style="width: 100px;"><strong style="color: #1589FF;" id="totalWeight">0.00</strong></td>
+                                    <td style="width: 150px;"></td>
+                                    <td style="width: 150px;"></td>
+                                    <td style="width: 150px;"></td>
+                                    <td style="width: 100px;"></td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -673,11 +720,30 @@ function searchRecords() {
             });
 
             issueTable.draw();
+            
+            // Update grand total
+            updateGrandTotal();
         },
         error: function() {
             showSpinner(false);
         }
     });
+}
+
+function updateGrandTotal() {
+    var data = issueTable.rows().data();
+    var totalBales = 0;
+    var totalWeight = 0;
+    
+    data.each(function(row, index) {
+        // row[3] is Bales, row[4] is Weight
+        totalBales += parseFloat(row[3]) || 0;
+        totalWeight += parseFloat(row[4]) || 0;
+    });
+    
+    // Update the grand total display
+    $('#totalBales').text(totalBales.toFixed(2));
+    $('#totalWeight').text(totalWeight.toFixed(2));
 }
 
 $(document).on('click', '.view-issue', function() {
