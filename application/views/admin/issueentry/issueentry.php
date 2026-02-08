@@ -883,6 +883,27 @@ $('#generateReportBtn').on('click', function() {
             if (response.success) {
                 // Download Excel file
                 window.location.href = response.file_url;
+                
+                // Extract file name from file_url
+                var fileUrl = response.file_url;
+                var fileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+                
+                // Delete file after 5 seconds to allow download to complete
+                setTimeout(function() {
+                    $.ajax({
+                        url: '<?php echo base_url("admin/issueentry/delete_excel_file"); ?>',
+                        type: 'POST',
+                        data: { file_name: fileName },
+                        dataType: 'json',
+                        success: function(deleteResponse) {
+                            // File deleted successfully, silent deletion
+                        },
+                        error: function() {
+                            // Silent error, don't show message
+                        }
+                    });
+                }, 5000);
+                
                 $('#reportModal').modal('hide');
             } else {
                 alert(response.message);

@@ -616,4 +616,39 @@ class Issueentry extends CI_Controller {
         
         $sheet->getStyle($range)->applyFromArray($style);
     }
+
+    /**
+     * Delete Excel report file
+     */
+    public function delete_excel_file() {
+        $file_name = $this->input->post('file_name');
+        
+        if (!$file_name) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'File name is required']);
+            return;
+        }
+
+        $file_path = FCPATH . 'uploads/' . $file_name;
+        
+        // Validate that the file is in the uploads directory and is an xlsx file
+        if (!preg_match('/^issue_report_.*\.xlsx$/', $file_name)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid file']);
+            return;
+        }
+
+        if (file_exists($file_path)) {
+            if (unlink($file_path)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'File deleted successfully']);
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Failed to delete file']);
+            }
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'File not found']);
+        }
+    }
 }
