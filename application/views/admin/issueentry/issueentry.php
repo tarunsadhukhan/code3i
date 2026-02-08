@@ -38,35 +38,6 @@ $this->load->view('admin/header');
         background-color: #2E86C1;
     }
 
-    #issuerecordTable tr.grand-total-row {
-        background-color: #E8F4F8 !important;
-        font-weight: bold;
-        border-top: 3px solid #1589FF;
-        border-bottom: 3px solid #1589FF;
-    }
-
-    #issuerecordTable tr.grand-total-row:hover {
-        background-color: #E8F4F8 !important;
-    }
-
-    #grandTotalTable {
-        border-collapse: collapse;
-    }
-
-    #grandTotalTable td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-        white-space: nowrap;
-    }
-
-    #grandTotalTable tr.grand-total-row {
-        background-color: #E8F4F8 !important;
-        font-weight: bold;
-        border-top: 3px solid #1589FF;
-        border-bottom: 3px solid #1589FF;
-    }
-
     .selected {
         background-color: yellow;
     }
@@ -270,12 +241,17 @@ $this->load->view('admin/header');
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <button type="submit" class="btn btn-success" style="height: 40px; width: 150px; font-size: 16px; font-weight: bold;">Save Issue</button>
-                            <button type="button" class="btn btn-secondary" id="clearForm" style="height: 40px; width: 150px; font-size: 16px; font-weight: bold;">Clear Form</button>
+                        <div class="form-group col-md-2">
+                            <button type="submit" class="btn btn-success" style="height: 40px; width: 100%; font-size: 16px; font-weight: bold;">Save Issue</button>
                         </div>
-                        <div class="form-group col-md-4 text-right">
-                            <button type="button" class="btn" id="importBtn" style="height: 40px; width: 150px; font-size: 16px; font-weight: bold; background-color: #ff9800; color: white; border: none;">Import</button>
+                        <div class="form-group col-md-2">
+                            <button type="button" class="btn btn-secondary" id="clearForm" style="height: 40px; width: 100%; font-size: 16px; font-weight: bold;">Clear Form</button>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <button type="button" class="btn btn-success" id="processBtn" style="width: 100%; height: 40px;">Process</button>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <button type="button" class="btn" id="importBtn" style="width: 100%; height: 40px; background-color: #ff9800; color: white; border: none;">Import</button>
                         </div>
                     </div>
                 </form>
@@ -287,18 +263,6 @@ $this->load->view('admin/header');
                 </div>
                 <div class="card-body">
                     <div class="form-row">
-                        <div class="form-group col-md-3">
-                            <label>Search by Date</label>
-                            <input type="text" class="form-control datepicker" id="searchDate">
-                        </div>
-                        <div class="form-group col-md-2">
-                            <label>&nbsp;</label>
-                            <button type="button" class="btn btn-primary" id="searchRecords" style="width: 100%; height: 40px;">Search</button>
-                        </div>
-                        <div class="form-group col-md-3">
-                            <label>&nbsp;</label>
-                            <button type="button" class="btn btn-success" id="processBtn" style="width: 100%; height: 40px;">Process</button>
-                        </div>
                         <div class="form-group col-md-2">
                             <label>&nbsp;</label>
                             <button type="button" class="btn btn-info" id="exportBtn" style="width: 100%; height: 40px;">Export CSV</button>
@@ -326,24 +290,6 @@ $this->load->view('admin/header');
                                 </tr>
                             </thead>
                             <tbody>
-                            </tbody>
-                        </table>
-
-                        <!-- Grand Total Table -->
-                        <table id="grandTotalTable" style="width: 100%; margin-top: -1px;">
-                            <tbody>
-                                <tr class="grand-total-row">
-                                    <td style="width: 120px;"></td>
-                                    <td style="width: 100px;"></td>
-                                    <td style="width: 100px;"></td>
-                                    <td style="width: 80px;"><strong style="color: #1589FF;">GRAND TOTAL</strong></td>
-                                    <td style="width: 100px;"><strong style="color: #1589FF;" id="totalBales">0.00</strong></td>
-                                    <td style="width: 100px;"><strong style="color: #1589FF;" id="totalWeight">0.00</strong></td>
-                                    <td style="width: 150px;"></td>
-                                    <td style="width: 150px;"></td>
-                                    <td style="width: 150px;"></td>
-                                    <td style="width: 100px;"></td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -415,7 +361,6 @@ $(document).ready(function() {
     // Set default dates
     var today = new Date();
     $('#issuedate').val(formatDateDDMMYYYY(today));
-    $('#searchDate').val(formatDateDDMMYYYY(today));
 
     // Initialize Select2
     $('.select2').select2({
@@ -592,22 +537,8 @@ function clearForm() {
     $('#issuedate').val(formatDateDDMMYYYY(today));
 }
 
-$('#searchRecords').on('click', function() {
-    searchRecords();
-});
-
-$('#searchDate').on('change', function() {
-    searchRecords();
-});
-
-$('#issuedate').on('change', function() {
-     var searchDate = $('#issuedate').val();   
-    $('#searchDate').val(searchDate);
-    searchRecords();
-});
-
 $('#processBtn').on('click', function() {
-    var searchDate = $('#searchDate').val();
+    var searchDate = $('#issuedate').val();
     
     if (!searchDate) {
         alert('Please select a date first');
@@ -639,8 +570,12 @@ $('#processBtn').on('click', function() {
     }
 });
 
+$('#issuedate').on('change', function() {
+    searchRecords();
+});
+
 $('#exportBtn').on('click', function() {
-    var searchDate = $('#searchDate').val();
+    var searchDate = $('#issuedate').val();
     
     if (!searchDate) {
         alert('Please select a date and search records first');
@@ -682,7 +617,7 @@ $('#exportBtn').on('click', function() {
 
 
 function searchRecords() {
-    var searchDate = $('#searchDate').val();
+    var searchDate = $('#issuedate').val();
     // Convert dd-mm-yyyy to yyyy-mm-dd for database query
     var dbDate = convertDDMMYYYYtoYYYYMMDD(searchDate);
     showSpinner(true);
@@ -720,30 +655,11 @@ function searchRecords() {
             });
 
             issueTable.draw();
-            
-            // Update grand total
-            updateGrandTotal();
         },
         error: function() {
             showSpinner(false);
         }
     });
-}
-
-function updateGrandTotal() {
-    var data = issueTable.rows().data();
-    var totalBales = 0;
-    var totalWeight = 0;
-    
-    data.each(function(row, index) {
-        // row[3] is Bales, row[4] is Weight
-        totalBales += parseFloat(row[3]) || 0;
-        totalWeight += parseFloat(row[4]) || 0;
-    });
-    
-    // Update the grand total display
-    $('#totalBales').text(totalBales.toFixed(2));
-    $('#totalWeight').text(totalWeight.toFixed(2));
 }
 
 $(document).on('click', '.view-issue', function() {

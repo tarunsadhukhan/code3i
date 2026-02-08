@@ -62,6 +62,38 @@ class Issueentry extends CI_Controller {
     }
 
     /**
+     * Get report data for date range
+     */
+    public function get_report_data_ajax() {
+        $from_date = $this->input->post('from_date');
+        $to_date = $this->input->post('to_date');
+
+        if (!$from_date || !$to_date) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Both dates are required']);
+            return;
+        }
+
+        // Check if dates are in dd-mm-yyyy format and convert to yyyy-mm-dd
+        $from_date_db = $from_date;
+        $to_date_db = $to_date;
+        
+        if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $from_date)) {
+            $from_parts = explode('-', $from_date);
+            $from_date_db = $from_parts[2] . '-' . $from_parts[1] . '-' . $from_parts[0];
+        }
+        if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $to_date)) {
+            $to_parts = explode('-', $to_date);
+            $to_date_db = $to_parts[2] . '-' . $to_parts[1] . '-' . $to_parts[0];
+        }
+
+        $report_data = $this->Issueentry_model->get_report_data($from_date_db, $to_date_db);
+        
+        header('Content-Type: application/json');
+        echo json_encode($report_data);
+    }
+
+    /**
      * Save new issue record
      */
     public function save_issue() {
