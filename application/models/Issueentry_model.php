@@ -466,4 +466,362 @@ LEFT JOIN EMPMILL12.jutemaster jm
         
         return $query->result_array();
     }
+
+
+ public function get_report_data_J01($from_date, $to_date) {
+        $sql = "
+SELECT 
+    stk.*,
+    jm.quality,
+    jm.jcode,
+    ifnull(tjr.rate,0) rate,
+    round(ifnull(tjr.rate,0)*issweight*10,0) issvalue,
+    round(ifnull(tjr.rate,0)*tdisweight*10,0) tdissvalue,0 delvweight
+FROM (
+	SELECT 
+        jcode_id,
+        SUM(opbales)     AS opbales,
+        SUM(opweight)/1000   AS opweight,
+        round(SUM(rcvbales),3)   AS rcvbales,
+        round(SUM(rcvweight)/1000,3)  AS rcvweight,
+        SUM(issbales)   AS issbales,
+        round(SUM(issweight)/1000,3)  AS issweight,
+        SUM(adjbales)   AS adjbales,
+        round(SUM(adjweight)/1000,3)  AS adjweight,
+        round(sum(tdrecvweight)/1000,3) as tdrecvweight,
+        round(sum(tdisweight)/1000,3) AS tdisweight,
+        round(sum(tdadjweight)/1000,3) as tdadjweight
+    FROM (
+        SELECT 
+            jcode_id,
+            rp.godown_id,
+            packcode,
+            recpbales               AS opbales,
+            netweight               AS opweight,
+            0 AS rcvbales, 0 AS rcvweight,
+            0 AS issbales, 0 AS issweight,
+            0 AS adjbales, 0 AS adjweight,
+            0 as tdrecvweight,0 tdisweight,0 tdadjweight
+        FROM EMPMILL12.recpfile rp
+        LEFT JOIN EMPMILL12.recpheader rph 
+            ON rp.recpmast_id = rph.recpmast_id
+        WHERE rph.inwarddate < '$from_date'
+        UNION ALL
+        SELECT 
+            jcode_id,
+            i.godown_id,
+            packcode,
+            -bales,
+            -i.weight,
+            0, 0, 0, 0, 0, 0,0,0,0
+        FROM EMPMILL12.issufile i
+        WHERE i.issuedate < '$from_date'
+        UNION ALL
+        SELECT 
+            jcode_id,
+            godwn_id,
+            packcode,
+            bales,
+            weight,
+            0, 0, 0, 0, 0, 0,0,0,0
+        FROM EMPMILL12.stock_adjst sa
+        WHERE sa.tran_date < '$from_date'
+        UNION ALL
+        SELECT 
+            ja.jcode_id_to,
+            ja.gcode_id_to,
+            packcode,
+            bales,
+            ja.weight,
+            0, 0, 0, 0, 0, 0,0,0,0
+        FROM EMPMILL12.jute_adjust ja
+        WHERE ja.tran_date < '$from_date'
+        UNION ALL
+        SELECT 
+            ja.jcode_id_from,
+            ja.gcode_id_frm,
+            packcode,
+            -bales,
+            -ja.weight,
+            0, 0, 0, 0, 0, 0,0,0,0
+        FROM EMPMILL12.jute_adjust ja
+        WHERE ja.tran_date < '$from_date'
+        UNION ALL
+        SELECT 
+            jcode_id,
+            rp.godown_id,
+            packcode,
+            0, 0,
+            recpbales,
+            netweight,
+            0, 0, 0, 0,0,0,0
+        FROM EMPMILL12.recpfile rp
+        LEFT JOIN EMPMILL12.recpheader rph 
+            ON rp.recpmast_id = rph.recpmast_id
+        WHERE rph.inwarddate = '$from_date'
+        UNION ALL
+        SELECT 
+            jcode_id,
+            godwn_id,
+            packcode,
+            0, 0, 0, 0, 0, 0,
+            bales,
+            weight,0,0,0
+        FROM EMPMILL12.stock_adjst sa
+        WHERE sa.tran_date = '$from_date'
+        UNION ALL
+        SELECT 
+            ja.jcode_id_to,
+            ja.gcode_id_to,
+            packcode,
+            0, 0, 0, 0, 0, 0,
+            bales,
+            weight,0,0,0
+        FROM EMPMILL12.jute_adjust ja
+        WHERE ja.tran_date = '$from_date'
+        UNION ALL
+        SELECT 
+            ja.jcode_id_from,
+            ja.gcode_id_frm,
+            packcode,
+            0, 0, 0, 0, 0, 0,
+            -bales,
+            -weight,0,0,0
+        FROM EMPMILL12.jute_adjust ja
+        WHERE ja.tran_date = '2026-01-15'
+        UNION ALL
+        SELECT 
+            jcode_id,
+            i.godown_id,
+            packcode,
+            0, 0, 0, 0,
+            bales,
+            weight,
+            0, 0,0,0,0
+        FROM EMPMILL12.issufile i
+        WHERE i.issuedate = '$from_date'
+        UNION ALL
+        SELECT 
+            jcode_id,
+            i.godown_id,
+            packcode,
+            0, 0, 0, 0,
+            0,
+            0,
+            0, 0,0,weight,0
+        FROM EMPMILL12.issufile i
+        WHERE year(i.issuedate) = year('$from_date') and month(i.issuedate) = month('$from_date') 
+        union all
+        SELECT 
+            jcode_id,
+            rp.godown_id,
+            packcode,
+            0,
+            0,
+            0 AS rcvbales, 0 AS rcvweight,
+            0 AS issbales, 0 AS issweight,
+            0 AS adjbales, 0 AS adjweight,
+            netweight as tdrecvweight,0 tdisweight,0
+        FROM EMPMILL12.recpfile rp
+        LEFT JOIN EMPMILL12.recpheader rph 
+            ON rp.recpmast_id = rph.recpmast_id
+        WHERE 
+        year(rph.inwarddate) = year('$from_date') and month(rph.inwarddate) = month('$from_date') 
+		union all
+        SELECT 
+            jcode_id,
+            godwn_id,
+            packcode,
+            0,
+            0,
+            0, 0, 0, 0, 0, 0,0,0,abs(weight)
+        FROM EMPMILL12.stock_adjst sa
+        WHERE  year(sa.tran_date) = year('$from_date') 
+        and month(sa.tran_date) = month('$from_date') 
+        UNION ALL
+        SELECT 
+            ja.jcode_id_to,
+            ja.gcode_id_to,
+            packcode,
+            0,
+            0,
+            0, 0, 0, 0, 0, 0,0,0,abs(weight)
+        FROM EMPMILL12.jute_adjust ja
+        WHERE  year(ja.tran_date) = year('$from_date') and month(ja.tran_date) = month('$from_date') 
+        UNION ALL
+        SELECT 
+            ja.jcode_id_from,
+            ja.gcode_id_frm,
+            packcode,
+            0,
+            0,
+            0, 0, 0, 0, 0, 0,0,0,abs(weight)
+        FROM EMPMILL12.jute_adjust ja
+        WHERE  year(ja.tran_date) = year('$from_date') and month(ja.tran_date) = month('$from_date') 
+        ) g
+    GROUP BY jcode_id 
+) stk
+LEFT JOIN EMPMILL12.jutemaster jm 
+    ON stk.jcode_id = jm.jcode_id
+       left join EMPMILL12.tbl_jute_rate tjr  
+    on stk.jcode_id =tjr.jcode_id and  year(tjr.rate_date ) = year('$from_date') and month(tjr.rate_date) = month('$from_date') 
+    where (abs(opweight)+abs(stk.tdrecvweight )+abs(stk.tdisweight )+abs(stk.tdadjweight ))>0
+    order by jm.jcode 
+     ;";
+        
+        $query = $this->db->query($sql, [
+            $from_date, $from_date,  // opening balance dates
+            $from_date, $to_date,    // receive dates
+            $from_date, $to_date,    // receive dates again
+            $from_date, $to_date,    // adjustment dates
+            $from_date, $to_date,    // adjustment dates again
+            $to_date, $to_date, $to_date,  // closing balance - opening receipt issue
+            $to_date, $to_date, $to_date,  // closing balance weight
+            $from_date, $to_date            // main query dates
+        ]);
+        
+        return $query->result_array();
+    }
+
+
+
+
+    /**
+     * Get Jute Report (01) - Stock Report with opening, received, issued, and closing balance
+     */
+    public function get_jute_report_01($from_date, $to_date) {
+        return $this->get_report_data_J01($from_date, $to_date);
+    }
+
+    /**
+     * Get Jute Report (02) - Daily transaction report (issues by date, quality, and type)
+     */
+    public function get_jute_report_02($from_date, $to_date) {
+        $sql = "SELECT 
+                    i.issuedate,
+                    jm.quality,
+                    i.stype,
+                    SUM(i.bales) as bales,
+                    SUM(i.weight) as weight,
+                    AVG(i.rate) as rate
+                FROM EMPMILL12.issufile i
+                LEFT JOIN EMPMILL12.jutemaster jm ON i.jcode_id = jm.jcode_id
+                WHERE i.issuedate >= ? AND i.issuedate <= ?
+                GROUP BY i.issuedate, i.jcode_id, i.stype
+                ORDER BY i.issuedate DESC, jm.quality";
+        
+        $query = $this->db->query($sql, [$from_date, $to_date]);
+        return $query->result_array();
+    }
+
+    /**
+     * Get Jute Stock Report - Stock by quality, packing, and godown
+     */
+    public function get_jute_stock_report($from_date, $to_date) {
+        return $this->get_report_data($from_date, $to_date);
+    }
+
+    /**
+     * Get Issue Report - Detailed issue transactions
+     */
+    public function get_issue_report($from_date, $to_date) {
+        $sql = "SELECT 
+                    i.issuedate,
+                    jm.quality,
+                    wd.name as godownno,
+                    pm.packing,
+                    i.bales,
+                    i.weight,
+                    i.rate,
+                    i.stype,
+                    i.jute01,
+                    i.jute02
+                FROM EMPMILL12.issufile i
+                LEFT JOIN EMPMILL12.jutemaster jm ON i.jcode_id = jm.jcode_id
+                LEFT JOIN warehouse_details wd ON i.godown_id = wd.id
+                LEFT JOIN EMPMILL12.pack_master pm ON i.packcode = pm.pack_id
+                WHERE i.issuedate >= ? AND i.issuedate <= ?
+                ORDER BY i.issuedate DESC, jm.quality";
+        
+        $query = $this->db->query($sql, [$from_date, $to_date]);
+        return $query->result_array();
+    }
+
+    /**
+     * Get Godown Wise Stock - Stock grouped by godown
+     */
+    public function get_godown_wise_stock($from_date, $to_date) {
+        $sql = "SELECT 
+                    stk.*,
+                    wd.name,
+                    jm.quality,
+                    pm.packing
+                FROM (
+                    SELECT 
+                        jcode_id,
+                        godown_id,
+                        packcode,
+                        SUM(opbales) AS opbales,
+                        SUM(opweight) AS opweight,
+                        SUM(rcvbales) AS rcvbales,
+                        SUM(rcvweight) AS rcvweight,
+                        SUM(issbales) AS issbales,
+                        SUM(issweight) AS issweight
+                    FROM (
+                        SELECT 
+                            jcode_id,
+                            rp.godown_id,
+                            packcode,
+                            recpbales AS opbales,
+                            netweight AS opweight,
+                            0 AS rcvbales, 0 AS rcvweight,
+                            0 AS issbales, 0 AS issweight
+                        FROM EMPMILL12.recpfile rp
+                        LEFT JOIN EMPMILL12.recpheader rph 
+                            ON rp.recpmast_id = rph.recpmast_id
+                        WHERE rph.inwarddate < ?
+                        UNION ALL
+                        SELECT 
+                            jcode_id,
+                            i.godown_id,
+                            packcode,
+                            -bales,
+                            -i.weight,
+                            0, 0, 0, 0
+                        FROM EMPMILL12.issufile i
+                        WHERE i.issuedate < ?
+                        UNION ALL
+                        SELECT 
+                            jcode_id,
+                            rp.godown_id,
+                            packcode,
+                            0, 0,
+                            recpbales,
+                            netweight,
+                            0, 0
+                        FROM EMPMILL12.recpfile rp
+                        LEFT JOIN EMPMILL12.recpheader rph 
+                            ON rp.recpmast_id = rph.recpmast_id
+                        WHERE rph.inwarddate >= ? AND rph.inwarddate <= ?
+                        UNION ALL
+                        SELECT 
+                            jcode_id,
+                            i.godown_id,
+                            packcode,
+                            0, 0, 0, 0,
+                            bales,
+                            weight
+                        FROM EMPMILL12.issufile i
+                        WHERE i.issuedate >= ? AND i.issuedate <= ?
+                    ) g
+                    GROUP BY jcode_id, godown_id, packcode
+                ) stk
+                LEFT JOIN warehouse_details wd ON stk.godown_id = wd.id
+                LEFT JOIN EMPMILL12.jutemaster jm ON stk.jcode_id = jm.jcode_id
+                LEFT JOIN EMPMILL12.pack_master pm ON stk.packcode = pm.pack_id
+                ORDER BY wd.name, jm.quality";
+        
+        $query = $this->db->query($sql, [$from_date, $from_date, $from_date, $to_date, $from_date, $to_date]);
+        return $query->result_array();
+    }
 }

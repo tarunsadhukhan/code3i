@@ -421,10 +421,19 @@ $this->load->view('admin/footer');
 <script>
 $(document).ready(function() {
     // Initialize datepicker
-    $('.datepicker').datepicker({
+    $('#tran_date').datepicker({
         dateFormat: 'dd-mm-yy',
         changeMonth: true,
-        changeYear: true
+        changeYear: true,
+        onSelect: function(dateText) {
+            // Keep the selected date and trigger change event
+            $(this).val(dateText);
+            $(this).trigger('change');
+        },
+        onClose: function(dateText) {
+            // Preserve the selected date
+            $(this).val(dateText);
+        }
     });
 
     // Set today's date on page load
@@ -434,8 +443,12 @@ $(document).ready(function() {
 
     // Load records on date change
     $('#tran_date').on('change', function() {
+        // Store the current value before any operations
+        var selectedDate = $(this).val();
         loadRecords();
         fetchAndPopulateData();
+        // Ensure the value is preserved
+        $(this).val(selectedDate);
     });
 
     // Load Records Button
@@ -730,12 +743,23 @@ $(document).ready(function() {
         return true;
     }
 
-    function clearForm() {
+    function clearForm(resetDate = true) {
+        // Clear form fields but preserve date if resetDate is false
+        var currentDate = $('#tran_date').val();
+        
         $('#miscprodForm')[0].reset();
         $('#misc_prod_ent_id').val('');
-        var today = new Date();
-        var formattedDate = ("0" + (today.getDate())).slice(-2) + "-" + ("0" + (today.getMonth() + 1)).slice(-2) + "-" + today.getFullYear();
-        $('#tran_date').val(formattedDate);
+        
+        // Only reset date if explicitly requested
+        if (resetDate) {
+            var today = new Date();
+            var formattedDate = ("0" + (today.getDate())).slice(-2) + "-" + ("0" + (today.getMonth() + 1)).slice(-2) + "-" + today.getFullYear();
+            $('#tran_date').val(formattedDate);
+        } else {
+            // Restore the selected date
+            $('#tran_date').val(currentDate);
+        }
+        
         $('#saveBtn').show();
         $('#updateBtn').hide();
         $('#deleteBtn').hide();
@@ -790,8 +814,8 @@ $(document).ready(function() {
                     $('#updateBtn').show();
                     $('#deleteBtn').show();
                 } else {
-                    // No record found, clear form for new entry
-                    clearForm();
+                    // No record found, clear form for new entry but preserve selected date
+                    clearForm(false);
                 }
             },
             error: function() {

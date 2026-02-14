@@ -1,0 +1,8 @@
+﻿ THE EMPIRE JUTE COMPANY LTD.
+ Daily Jute Stock Report Dated :24-01-2026                                               Report No:[JUT01]
+  --------------------------------------------------------------------------------------------------------------------------------------------
+ |Jcode|Quality     | Opening|Receipt |<------Issue--------->|Delivery| Adjust |Closing |<---------Month To Date----------->| * |Stock| Group
+ |     |            | Weight | Weight | Weight | Rate|Amount | Weight | Weight |Weight  |Receipt Wt| Issue Wt  | Issue      | * |for  |
+ |     |            |  (Mt)  |  (Mt)  |  (Mt)  |(Qtl)| (Rs.) |  (Mt)  |  (Mt)  | (Mt)   |   (Mt)   |           | Amount     | * |Days |
+ |-----|------------|--------|--------|--------|-----|-------|--------|--------|--------|----------|-----------|------------| * |-----|------
+ |     |            |        |        |        |     |       |        |        |        |          |           |            | * |     |

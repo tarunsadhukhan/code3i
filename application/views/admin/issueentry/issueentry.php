@@ -310,7 +310,7 @@ $this->load->view('admin/header');
 
 <!-- Report Modal -->
 <div class="modal fade" id="reportModal" tabindex="-1" role="dialog" aria-labelledby="reportModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="reportModalLabel">Generate Report</h5>
@@ -321,12 +321,37 @@ $this->load->view('admin/header');
             <div class="modal-body">
                 <form id="reportForm">
                     <div class="form-group">
+                        <label for="reportTypeSelect">Select Report <span class="text-danger">*</span></label>
+                        <select id="reportTypeSelect" name="reportType" class="form-control" required>
+                            <option value="">-- Select Report --</option>
+                            <option value="jute_report_01">Jute Report (01)</option>
+                            <option value="jute_report_02">Jute Report (02)</option>
+                            <option value="jute_stock_report">Jute Stock Report</option>
+                            <option value="issue_report">Issue Report</option>
+                            <option value="godown_wise_stock">Godown Wise Stock</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="reportFromDate">From Date <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control datepicker" id="reportFromDate" name="fromDate" required>
+                        <input type="text" class="form-control datepicker" id="reportFromDate" name="fromDate" placeholder="dd-mm-yyyy" required>
                     </div>
                     <div class="form-group">
                         <label for="reportToDate">To Date <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control datepicker" id="reportToDate" name="toDate" required>
+                        <input type="text" class="form-control datepicker" id="reportToDate" name="toDate" placeholder="dd-mm-yyyy" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportFormatSelect">Export Format <span class="text-danger">*</span></label>
+                        <div class="btn-group btn-group-toggle d-flex" data-toggle="buttons">
+                            <label class="btn btn-outline-primary flex-grow-1">
+                                <input type="radio" name="reportFormat" id="formatText" value="text" required> Text
+                            </label>
+                            <label class="btn btn-outline-primary flex-grow-1">
+                                <input type="radio" name="reportFormat" id="formatExcel" value="excel" required> Excel
+                            </label>
+                            <label class="btn btn-outline-primary flex-grow-1 active">
+                                <input type="radio" name="reportFormat" id="formatCsv" value="csv" required checked> CSV
+                            </label>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -351,6 +376,14 @@ $this->load->view('admin/header');
 var issueTable;
 
 $(document).ready(function() {
+    // Create hidden iframe for downloads if it doesn't exist
+    if (!document.getElementById('downloadFrame')) {
+        var downloadFrame = document.createElement('iframe');
+        downloadFrame.id = 'downloadFrame';
+        downloadFrame.style.display = 'none';
+        document.body.appendChild(downloadFrame);
+    }
+
     // Initialize datepickers
     $('.datepicker').datepicker({
         dateFormat: 'dd-mm-yy',
@@ -365,6 +398,13 @@ $(document).ready(function() {
     // Initialize Select2
     $('.select2').select2({
         width: '100%'
+    });
+
+    // Initialize Select2 for report type with search
+    $('#reportTypeSelect').select2({
+        width: '100%',
+        theme: 'bootstrap4',
+        placeholder: '-- Select Report --'
     });
 
     // Load dropdowns
@@ -816,43 +856,34 @@ function performIssueImport(issueDate, deleteExisting) {
 }
 
 $('#reportBtn').on('click', function() {
-    // Initialize datepickers in modal if not already done
-    $('#reportFromDate').datepicker({
-        dateFormat: 'dd-mm-yy',
-        changeMonth: true,
-        changeYear: true
-    });
-    $('#reportToDate').datepicker({
-        dateFormat: 'dd-mm-yy',
-        changeMonth: true,
-        changeYear: true
-    });
-    
     // Get issue date from form
-    var issueDate = $('#issuedate').val(); // Format: yyyy-mm-dd
+    var issueDate = $('#issuedate').val(); // Format: dd-mm-yyyy
+    var dateToSet;
     
-    // Convert yyyy-mm-dd to dd-mm-yyyy for display
     if (issueDate) {
+        // Parse dd-mm-yyyy format to Date object
         var parts = issueDate.split('-');
-        var issueDateFormatted = parts[2] + '-' + parts[1] + '-' + parts[0];
-        $('#reportFromDate').val(issueDateFormatted);
-        $('#reportToDate').val(issueDateFormatted);
+        dateToSet = new Date(parts[2], parts[1] - 1, parts[0]);
     } else {
-        // Fallback to today if no issue date
-        var today = new Date();
-        $('#reportFromDate').val(formatDateDDMMYYYY(today));
-        $('#reportToDate').val(formatDateDDMMYYYY(today));
+        // Use today's date
+        dateToSet = new Date();
     }
+    
+    // Set dates using the already initialized datepicker
+    $('#reportFromDate').datepicker('setDate', dateToSet);
+    $('#reportToDate').datepicker('setDate', dateToSet);
     
     $('#reportModal').modal('show');
 });
 
 $('#generateReportBtn').on('click', function() {
+    var reportType = $('#reportTypeSelect').val();
     var fromDate = $('#reportFromDate').val();
     var toDate = $('#reportToDate').val();
+    var format = $('input[name="reportFormat"]:checked').val();
     
-    if (!fromDate || !toDate) {
-        alert('Please select both From Date and To Date');
+    if (!reportType || !fromDate || !toDate || !format) {
+        alert('Please fill all required fields');
         return;
     }
     
@@ -876,41 +907,60 @@ $('#generateReportBtn').on('click', function() {
     $.ajax({
         url: '<?php echo base_url("admin/issueentry/generate_report"); ?>',
         type: 'POST',
-        data: { from_date: fromDateBackend, to_date: toDateBackend },
+        data: { 
+            report_type: reportType, 
+            from_date: fromDateBackend, 
+            to_date: toDateBackend, 
+            format: format 
+        },
         dataType: 'json',
         success: function(response) {
             showSpinner(false);
             if (response.success) {
-                // Download Excel file
-                window.location.href = response.file_url;
+                // Show success message
+                alert('Report generated successfully! Starting download...');
                 
                 // Extract file name from file_url
                 var fileUrl = response.file_url;
                 var fileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
                 
-                // Delete file after 5 seconds to allow download to complete
+                // Use download method with proper parameters
+                var downloadUrl = '<?php echo base_url("admin/issueentry/download_report?file="); ?>' + encodeURIComponent(fileName);
+                
+                // Trigger download using hidden iframe
+                var downloadFrame = document.getElementById('downloadFrame');
+                if (!downloadFrame) {
+                    downloadFrame = document.createElement('iframe');
+                    downloadFrame.id = 'downloadFrame';
+                    downloadFrame.style.display = 'none';
+                    document.body.appendChild(downloadFrame);
+                }
+                downloadFrame.src = downloadUrl;
+                
+                // Delete file after 15 seconds to allow download to complete
                 setTimeout(function() {
                     $.ajax({
-                        url: '<?php echo base_url("admin/issueentry/delete_excel_file"); ?>',
+                        url: '<?php echo base_url("admin/issueentry/delete_export_file"); ?>',
                         type: 'POST',
                         data: { file_name: fileName },
                         dataType: 'json',
                         success: function(deleteResponse) {
-                            // File deleted successfully, silent deletion
+                            console.log('Temporary file cleaned up');
                         },
                         error: function() {
-                            // Silent error, don't show message
+                            console.log('File cleanup attempted');
                         }
                     });
-                }, 5000);
+                }, 15000);
                 
                 $('#reportModal').modal('hide');
             } else {
-                alert(response.message);
+                alert('Error: ' + response.message);
             }
         },
         error: function(xhr, status, error) {
             showSpinner(false);
+            console.log('Error response:', xhr.responseText);
             alert('Error generating report: ' + error);
         }
     });
