@@ -501,7 +501,7 @@ function loadRecords() {
 
             if (response.data.length > 0) {
                 $.each(response.data, function(key, value) {
-                    var btn = '<button class="btn btn-xs btn-info" onclick="editRecord(this)" data-id="' + value[0] + '" data-machine-id="' + value[6] + '">Edit</button>';
+                    var btn = '<button class="btn btn-xs btn-info" onclick="editRecord(this)" data-id="' + value[0] + '" data-spell="' + value[2] + '" data-machine-id="' + value[6] + '">Edit</button>';
                     table.row.add([
                         value[0],      // ID
                         value[1],      // Date
@@ -636,15 +636,16 @@ function deleteData() {
 
 function editRecord(btn) {
     var id = $(btn).data('id');
+    var spell = $(btn).data('spell');
     var machineId = $(btn).data('machine-id');
     
     // Get the row data from table
     var row = $(btn).closest('tr');
     var cells = row.find('td');
 
-    $('#bkd_id').val(cells.eq(0).text().trim());
+    $('#bkd_id').val(id);
     $('#tran_date').datepicker('setDate', cells.eq(1).text().trim());
-    $('#spell').val(cells.eq(2).text().trim());
+    $('#spell').val(spell).trigger('change');
     $('#time_from').val(cells.eq(3).text().trim());
     $('#time_to').val(cells.eq(4).text().trim());
     $('#total_hours').val(cells.eq(5).text().trim());
@@ -682,6 +683,7 @@ function clearForm() {
     $('#tran_date').val(formattedDate);
     
     $('#bkd_id').val('');
+    $('#spell').val('').trigger('change');
     $('#mechine_id').val('').trigger('change');
     $('#saveBtn').show();
     $('#updateBtn').hide();
@@ -698,7 +700,7 @@ function fetchAndPopulateData() {
         success: function(response) {
             if (response.success) {
                 var data = response.data;
-                $('#spell').val(data.spell);
+                $('#spell').val(data.spell).trigger('change');
                 $('#mechine_id').val(data.mechine_id).trigger('change');
             }
         }
