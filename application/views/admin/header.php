@@ -799,6 +799,15 @@ scratch. This page gets rid of all links and provides the needed markup only.
             </a>
           </li>
           <li class="nav-item">
+            <a href="<?php echo base_url().'admin/daily_finishing_entry'; ?>" class="nav-link">
+              <i class="nav-icon fas fa-industry"></i>
+              <p>
+                Daily Finishing Entry
+                <span class="right badge badge-danger">New</span>
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="<?php echo base_url().'admin/spreader_lapping_entry'; ?>" class="nav-link">
               <i class="nav-icon fas fa-layer-group"></i>
               <p>

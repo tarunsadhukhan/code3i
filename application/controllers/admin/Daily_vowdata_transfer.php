@@ -1609,7 +1609,7 @@ if ($shiftName<>'ALL') {
 					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
 					$columnIndex++;
 //					$sheet->getRowDimension($rowIndex)->setRowHeight(30);
-					if (strlen($ebno)==0) {
+					if (!isset($ebno) || strlen($ebno)==0) {
  						    $rowRange = 'A' . $rowIndex . ':g' . $rowIndex;
     						$sheet->getStyle($rowRange)->applyFromArray($redRowStyle);
  
@@ -1897,7 +1897,7 @@ if ($shiftName<>'ALL') {
 					$value=$prd;
 					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
 					$columnIndex++;
-					if (strlen($ebno)==0) {
+					if (!isset($ebno) || strlen($ebno)==0) {
  						    $rowRange = 'A' . $rowIndex . ':g' . $rowIndex;
     						$sheet->getStyle($rowRange)->applyFromArray($redRowStyle);
  
@@ -2093,7 +2093,7 @@ if ($shiftName<>'ALL') {
 					$value=$prd;
 					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
 					$columnIndex++;
- 					if (strlen($ebno)==0) {
+ 					if (!isset($ebno) || strlen($ebno)==0) {
  						    $rowRange = 'A' . $rowIndex . ':g' . $rowIndex;
     						$sheet->getStyle($rowRange)->applyFromArray($redRowStyle);
  
@@ -2103,8 +2103,212 @@ if ($shiftName<>'ALL') {
 				}			
 
 
+				$rowIndex++;
+				$rowIndex++;
+				$rowIndex++;
+				$rowIndex++;
 
+ 					$rng='A'.$rowIndex;
+					$cmpn='The Empire Jute Co Ltd-7'	;
+					$sheet->setCellValue($rng, $cmpn);
+					$rng='A'.$rowIndex+1;
+					$sheet->setCellValue($rng, "Press Checklist (Attendance )  As on  : ".$rdate);
+					$columnIndex = 1;
+					$borderStyle = [
+						'borders' => [
+							'allBorders' => [
+								'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+							],
+						],
+					];
+				$rowIndex++;
+				$rowIndex++;
+				
+//				$rowIndex = 3;
+				$value='Date ';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='Spell';	
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='No of Workers';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='Mech name';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='Production';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				
+				$sheet->mergeCells('A1:g1');
+				$sheet->mergeCells('A2:g2');
+				$sheet->getStyle('A3:g50')->applyFromArray($borderStyle);
 
+				$sql="select da.*,g.prod from (
+					select SUBSTR(entry_date,1,10) fedate,spell,machine_id,mechine_name,sum(production) prod from (
+					select fe.*,mm.mechine_name  from vowsls.finishing_entries fe 
+					join vowsls.process_type_master ptm on fe.work_type =ptm.process_type_id and ptm.process_type ='PRESS'
+					left join vowsls.mechine_master mm on mm.mechine_id =fe.machine_id 
+					where fe.company_id=2  and substr(fe.entry_date,1,10) = '$sdate'  
+					) g group by   SUBSTR(entry_date,1,10),spell,machine_id,mechine_name
+					) g 
+					right join 
+					(
+					select da.attendance_date,da.spell,mc_id,mechine_name,count(*) no_of_workers from (
+						select da.attendance_date,da.spell,mc_id,mechine_name from  vowsls.daily_ebmc_attendance dea  
+					left join vowsls.daily_attendance da on da.daily_atten_id =dea.daily_atten_id 
+					left join vowsls.mechine_master mm on mm.mechine_id =dea.mc_id 
+					where dea.is_active=1 and da.is_active and da.attendance_date='$sdate'   and mm.type_of_mechine =31
+					) da group by da.attendance_date,da.spell,mc_id,mechine_name
+					) da on da.attendance_date =g.fedate and da.spell =g.spell and da.mc_id =g.machine_id 
+
+				";
+		//		echo $sql;
+				$query = $this->db->query($sql);
+				$data = $query->result_array();
+ 				foreach ($data as $record) {
+					$prdt=$record['attendance_date'];
+					$spl=$record['spell'];
+					$ebno=$record['no_of_workers'];
+ 					$qual=$record['mechine_name'];
+					$prd=$record['prod'];
+					$dsg='';
+					
+					$rowIndex++;
+					$columnIndex=1;
+					$value=$prdt;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$spl;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$ebno;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$qual;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$prd;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$dsg;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+ 					if (!isset($prd) || strlen($prd)==0) {
+ 						    $rowRange = 'A' . $rowIndex . ':g' . $rowIndex;
+    						$sheet->getStyle($rowRange)->applyFromArray($redRowStyle);
+ 
+					}
+ 	
+
+				}			
+				$rowIndex++;
+				$rowIndex++;
+				$rowIndex++;
+				$rowIndex++;
+
+ 					$rng='A'.$rowIndex;
+					$cmpn='The Empire Jute Co Ltd-7'	;
+					$sheet->setCellValue($rng, $cmpn);
+					$rng='A'.$rowIndex+1;
+					$sheet->setCellValue($rng, "Press Checklist (Production )  As on  : ".$rdate);
+					$columnIndex = 1;
+					$borderStyle = [
+						'borders' => [
+							'allBorders' => [
+								'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+							],
+						],
+					];
+				$rowIndex++;
+				$rowIndex++;
+				
+//				$rowIndex = 3;
+				$value='Date ';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='Spell';	
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='No of Workers';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='Mech name';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='Production';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				$value='';
+				$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+				$columnIndex++;
+				
+				$sheet->mergeCells('A1:g1');
+				$sheet->mergeCells('A2:g2');
+				$sheet->getStyle('A3:g50')->applyFromArray($borderStyle);
+
+				$sql="select g.*,da.no_of_workers from (
+					select SUBSTR(entry_date,1,10) fedate,spell,machine_id,mechine_name,sum(production) prod from (
+					select fe.*,mm.mechine_name  from vowsls.finishing_entries fe 
+					join vowsls.process_type_master ptm on fe.work_type =ptm.process_type_id and ptm.process_type ='PRESS'
+					left join vowsls.mechine_master mm on mm.mechine_id =fe.machine_id 
+					where fe.company_id=2  and substr(fe.entry_date,1,10) = '$sdate'  
+					) g group by   SUBSTR(entry_date,1,10),spell,machine_id,mechine_name
+					) g 
+					left join 
+					(
+					select da.attendance_date,da.spell,mc_id,count(*) no_of_workers from (
+						select da.attendance_date,da.spell,mc_id,mechine_name from  vowsls.daily_ebmc_attendance dea  
+					left join vowsls.daily_attendance da on da.daily_atten_id =dea.daily_atten_id 
+					left join vowsls.mechine_master mm on mm.mechine_id =dea.mc_id 
+					where dea.is_active=1 and da.is_active and da.attendance_date='$sdate'   and mm.type_of_mechine =31
+					) da group by da.attendance_date,da.spell,mc_id,mechine_name
+					) da on da.attendance_date =g.fedate and da.spell =g.spell and da.mc_id =g.machine_id 
+
+				";
+		//		echo $sql;
+				$query = $this->db->query($sql);
+				$data = $query->result_array();
+ 				foreach ($data as $record) {
+					$prdt=$record['fedate'];
+					$spl=$record['spell'];
+					$ebno=$record['no_of_workers'];
+ 					$qual=$record['mechine_name'];
+					$prd=$record['prod'];
+					$dsg='';
+					
+					$rowIndex++;
+					$columnIndex=1;
+					$value=$prdt;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$spl;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$ebno;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$qual;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$prd;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+					$value=$dsg;
+					$sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $value);
+					$columnIndex++;
+ 					if (!isset($ebno) || strlen($ebno)==0) {
+ 						    $rowRange = 'A' . $rowIndex . ':g' . $rowIndex;
+    						$sheet->getStyle($rowRange)->applyFromArray($redRowStyle);
+ 
+					}
+ 	
+
+				}			
 
 
 
