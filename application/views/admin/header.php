@@ -247,6 +247,12 @@ scratch. This page gets rid of all links and provides the needed markup only.
          </a>
        </li>
        <li class="nav-item">
+         <a href="<?php echo base_url().'admin/reports/Employee_vow_report'; ?>" class="nav-link">
+           <i class="far fa-circle nav-icon"></i>
+           <p>Employee VOW Report</p>
+         </a>
+       </li>
+       <li class="nav-item">
        <a href="<?php echo base_url().'admin/Pfesi'; ?>" class="nav-link ">
            <i class="far fa-circle nav-icon"></i>
            <p>View Articles</p>
