@@ -2233,6 +2233,11 @@ $(document).ready(function() {
             .join('&');
 
         window.location = baseUrl + 'admin/reports/Employee_vow_report/get_employeevowdataexl?' + queryString;
+        
+        // Clear localStorage after download
+        setTimeout(() => {
+            localStorage.removeItem('columnVisibility');
+        }, 500);
     });
 
     // Print button click
